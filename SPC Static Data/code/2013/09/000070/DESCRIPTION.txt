@@ -1,0 +1,8 @@
+Short (necessary code is just 44 simple LOC) N-dimensional "oct"-tree data structure which supports inserting data at coordinates, and extracting all the data within a given bounding box.
+Data can be inserted at any time, so it doesn't need to pre-process the data like the kdtree.
+
+N-dimensionality is handled by mapping the different subdomains in binary representation (e.g. 3 bits in 3D), which is fast and general.
+
+Code has been optimized to ensure efficiency.
+
+Would be a good fit for scipy.spatial which is currently missing a data structure like this (KDTree is not suitable in all scenarios)
