@@ -1,0 +1,222 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>single input pole placement &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Circumscribed Circle (CSC) for N randomly located 2-D points" href="48-circumscribed-circle-csc-for-n-randomly-located-2-d-points.html" />
+    <link rel="prev" title="ROC curve demo" href="38-roc-curve-demo.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="single-input-pole-placement">
+<h1>single input pole placement<a class="headerlink" href="#single-input-pole-placement" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> cknoll</p>
+<p><strong>Submitted on:</strong> 2012-04-22 05:44:43-07:00</p>
+<p>This code calculates the gain vector of a linear feedback controller which places the eigenvalues (or &quot;poles&quot;) of the closed loop system at desired locations in the complex plane (preferably in the open right half-plane).</p>
+<p>For single input systems it (theoretically) yields the same result as the &quot;place&quot; function from a famous control system toolbox but might be less stable numerically.</p>
+<p>Other python code for pole placement (and many other control-related things) is available on
+<a class="reference external" href="http://sourceforge.net/projects/python-control/">http://sourceforge.net/projects/python-control/</a> (which, however, depends on some fortran code and thus might be slightly harder to install that the snippet above).</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">r_</span><span class="p">,</span> <span class="n">c_</span>
+<span class="kn">from</span> <span class="nn">numpy.linalg</span> <span class="kn">import</span> <span class="n">inv</span>
+
+
+<span class="kn">import</span> <span class="nn">sympy</span> <span class="kn">as</span> <span class="nn">sp</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module provides the functionality for calculating a linear feedback</span>
+<span class="sd">controller which places the poles of the closed loop system at desired</span>
+<span class="sd">locations in the complex plane</span>
+
+<span class="sd">Works for controllable single input systems.</span>
+
+<span class="sd">Dependencies: numpy, sympy</span>
+
+<span class="sd">tags: pole placement, ackermann&#39;s formula, linear feedback control </span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+<span class="n">s</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;s&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">ev_to_poly</span><span class="p">(</span><span class="o">*</span><span class="n">evalues</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    takes a list of eigenvalues and returns the corresponding</span>
+<span class="sd">    characteristic polynomial</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">evalues</span><span class="p">:</span>
+         <span class="n">p</span><span class="o">*=</span><span class="p">(</span><span class="n">s</span><span class="o">-</span><span class="n">ev</span><span class="p">)</span>
+         
+    <span class="k">return</span> <span class="n">p</span>
+
+<span class="k">def</span> <span class="nf">new_matrix</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    takes (n by n) system matrix A and (n by 1) input vector b</span>
+<span class="sd">    returns: A* : = A-k.T*b</span>
+<span class="sd">    where k consists of n symbols k1, ..., kn</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">assert</span> <span class="n">n</span> <span class="o">==</span> <span class="n">m</span>
+    
+    <span class="n">kk</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">Matrix</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;k1:</span><span class="si">%i</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span>
+    
+    <span class="k">return</span> <span class="n">A</span> <span class="o">-</span> <span class="n">b</span><span class="o">*</span><span class="n">kk</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">kk</span>
+
+<span class="k">def</span> <span class="nf">char_equ</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    returns the characteristic equation of the matrix A</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">n</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">assert</span> <span class="n">n</span> <span class="o">==</span> <span class="n">m</span>
+    
+    <span class="k">return</span> <span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="n">s</span> <span class="o">-</span> <span class="n">A</span><span class="p">)</span><span class="o">.</span><span class="n">det</span><span class="p">()</span> 
+    
+
+
+<span class="k">def</span> <span class="nf">place</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">evalues</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    performes pole placement for the dynamical system given by</span>
+<span class="sd">        x_dot = A*x + b*u</span>
+<span class="sd">    by determining a linear feedback law u = -k.T*x</span>
+
+<span class="sd">    takes A, b and the disired eigenvalues of the closed loop system</span>
+<span class="sd">    </span>
+<span class="sd">    returns the vector k</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">des_poly</span> <span class="o">=</span> <span class="n">ev_to_poly</span><span class="p">(</span><span class="o">*</span><span class="n">evalues</span><span class="p">)</span>
+    
+    <span class="n">newA</span><span class="p">,</span> <span class="n">kk</span> <span class="o">=</span> <span class="n">new_matrix</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+    
+    <span class="n">poly_eq</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">Poly</span><span class="p">(</span><span class="n">char_equ</span><span class="p">(</span><span class="n">newA</span><span class="p">)</span><span class="o">-</span><span class="n">des_poly</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">domain</span> <span class="o">=</span> <span class="s1">&#39;EX&#39;</span><span class="p">)</span>
+    
+    <span class="n">eqsys</span> <span class="o">=</span> <span class="n">poly_eq</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">eqsys</span><span class="p">,</span> <span class="o">*</span><span class="nb">list</span><span class="p">(</span><span class="n">kk</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="n">kk</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+    
+<span class="k">def</span> <span class="nf">sym_to_num</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">arr</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">test1</span><span class="p">():</span>    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    test the algorithm with the inverted pendulum on a cart example</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">g</span> <span class="o">=</span> <span class="mf">9.81</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="mf">0.5</span> 
+    
+    <span class="c1"># System matrices (input: cart acceleration)</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span><span class="n">g</span><span class="o">/</span><span class="n">l</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="o">/</span><span class="n">l</span><span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">poles1</span> <span class="o">=</span> <span class="n">r_</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span> <span class="o">+</span><span class="mi">1j</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="mi">1j</span><span class="p">]</span>
+    <span class="n">kk</span> <span class="o">=</span> <span class="n">place</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">poles1</span><span class="p">)</span>
+
+    <span class="c1"># convert from sympy to numpy </span>
+    <span class="n">A_np</span> <span class="o">=</span> <span class="n">sym_to_num</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+    <span class="n">b_np</span> <span class="o">=</span> <span class="n">sym_to_num</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">kk_np</span> <span class="o">=</span> <span class="n">sym_to_num</span><span class="p">(</span><span class="n">kk</span><span class="p">)</span>
+    
+
+    <span class="n">A_res</span> <span class="o">=</span> <span class="n">A_np</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">b_np</span><span class="p">,</span> <span class="n">kk_np</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    
+    <span class="n">U1</span><span class="p">,</span><span class="n">V1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">A_np</span><span class="p">)</span>
+    <span class="n">U2</span><span class="p">,</span><span class="n">V2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">A_res</span><span class="p">)</span>
+    
+    <span class="k">print</span> <span class="s2">&quot;without feedback:&quot;</span><span class="p">,</span> <span class="n">U1</span><span class="p">,</span> <span class="s2">&quot;(unstable)&quot;</span>
+    <span class="k">print</span> <span class="s2">&quot;with feedback:&quot;</span><span class="p">,</span> <span class="n">U2</span><span class="p">,</span> <span class="s2">&quot;(stable)&quot;</span>
+    
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">test1</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="38-roc-curve-demo.html" title="previous chapter">ROC curve demo</a></li>
+      <li>Next: <a href="48-circumscribed-circle-csc-for-n-randomly-located-2-d-points.html" title="next chapter">Circumscribed Circle (CSC) for N randomly located 2-D points</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/41-single-input-pole-placement.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,289 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Convert categorical data in a structure numpy array to boolean fields &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Error estimates for fit parameters resulting from least-squares fits using bootstrap resampling" href="36-error-estimates-for-fit-parameters-resulting-from-least-squares-fits-using-bootstrap-resampling.html" />
+    <link rel="prev" title="Binary Liquid Mixture Immiscibility and Stability" href="32-binary-liquid-mixture-immiscibility-and-stability.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="convert-categorical-data-in-a-structure-numpy-array-to-boolean-fields">
+<h1>Convert categorical data in a structure numpy array to boolean fields<a class="headerlink" href="#convert-categorical-data-in-a-structure-numpy-array-to-boolean-fields" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> warren</p>
+<p><strong>Submitted on:</strong> 2012-03-15 16:58:16-07:00</p>
+<p>When analyzing data sets that contain categorical data, it is sometimes necessary to convert a field containing categorical data into separate boolean-valued fields, one field for each possible data value.  The function <code class="docutils literal"><span class="pre">bool_fields</span></code> does this for a NumPy structured array.</p>
+<p>Here's a simple example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">31</span><span class="p">]:</span> <span class="n">dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;color&#39;</span><span class="p">,</span> <span class="s1">&#39;S10&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;code&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)])</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">32</span><span class="p">]:</span> <span class="n">x</span> <span class="o">=</span> <span class="n">array</span><span class="p">([(</span><span class="s1">&#39;purple&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">1.25</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;purple&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>We'll use <code class="docutils literal"><span class="pre">bool_fields</span></code> to convert the <code class="docutils literal"><span class="pre">color</span></code> and <code class="docutils literal"><span class="pre">code</span></code> fields into boolean fields.  First we import <code class="docutils literal"><span class="pre">bool_fields</span></code>, and the simple pretty-printer <code class="docutils literal"><span class="pre">pp_struct_array1d</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">33</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">bool_fields</span> <span class="k">import</span> <span class="n">bool_fields</span><span class="p">,</span> <span class="n">pp_struct_array1d</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">34</span><span class="p">]:</span> <span class="n">pp_struct_array1d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+       <span class="n">color</span>         <span class="n">code</span>       <span class="n">height</span>
+<span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span>
+      <span class="n">purple</span>           <span class="mi">10</span>          <span class="mf">1.5</span>
+         <span class="n">red</span>           <span class="mi">20</span>          <span class="mf">2.0</span>
+         <span class="n">red</span>           <span class="mi">20</span>          <span class="mf">2.5</span>
+        <span class="n">blue</span>           <span class="mi">10</span>         <span class="mf">1.25</span>
+      <span class="n">purple</span>           <span class="mi">10</span>          <span class="mf">4.0</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Now we'll convert the <code class="docutils literal"><span class="pre">color</span></code> and <code class="docutils literal"><span class="pre">code</span></code> fields:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">35</span><span class="p">]:</span> <span class="n">b</span> <span class="o">=</span> <span class="n">bool_fields</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">,</span> <span class="s1">&#39;code&#39;</span><span class="p">])</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">36</span><span class="p">]:</span> <span class="n">pp_struct_array1d</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+  <span class="n">color</span><span class="o">.</span><span class="n">blue</span> <span class="n">color</span><span class="o">.</span><span class="n">purple</span>    <span class="n">color</span><span class="o">.</span><span class="n">red</span>      <span class="n">code</span><span class="o">.</span><span class="mi">10</span>      <span class="n">code</span><span class="o">.</span><span class="mi">20</span>       <span class="n">height</span>
+<span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span>
+       <span class="kc">False</span>         <span class="kc">True</span>        <span class="kc">False</span>         <span class="kc">True</span>        <span class="kc">False</span>          <span class="mf">1.5</span>
+       <span class="kc">False</span>        <span class="kc">False</span>         <span class="kc">True</span>        <span class="kc">False</span>         <span class="kc">True</span>          <span class="mf">2.0</span>
+       <span class="kc">False</span>        <span class="kc">False</span>         <span class="kc">True</span>        <span class="kc">False</span>         <span class="kc">True</span>          <span class="mf">2.5</span>
+        <span class="kc">True</span>        <span class="kc">False</span>        <span class="kc">False</span>         <span class="kc">True</span>        <span class="kc">False</span>         <span class="mf">1.25</span>
+       <span class="kc">False</span>         <span class="kc">True</span>        <span class="kc">False</span>         <span class="kc">True</span>        <span class="kc">False</span>          <span class="mf">4.0</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">bool_dtype</span></code> option lets us choose the dtype of the new fields, and the <code class="docutils literal"><span class="pre">exclude_fields</span></code> option lets us remove some fields from the new array.  The <code class="docutils literal"><span class="pre">join</span></code> option lets us set the character that joins the original field name with the unique values to create the new fields names.   For example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">37</span><span class="p">]:</span> <span class="n">c</span> <span class="o">=</span> <span class="n">bool_fields</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">,</span> <span class="s1">&#39;code&#39;</span><span class="p">],</span> <span class="n">exclude_fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">],</span> <span class="n">bool_dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span> <span class="n">join</span><span class="o">=</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">38</span><span class="p">]:</span> <span class="n">pp_struct_array1d</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+  <span class="n">color_blue</span> <span class="n">color_purple</span>    <span class="n">color_red</span>      <span class="n">code_10</span>      <span class="n">code_20</span>
+<span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span>
+           <span class="mi">0</span>            <span class="mi">1</span>            <span class="mi">0</span>            <span class="mi">1</span>            <span class="mi">0</span>
+           <span class="mi">0</span>            <span class="mi">0</span>            <span class="mi">1</span>            <span class="mi">0</span>            <span class="mi">1</span>
+           <span class="mi">0</span>            <span class="mi">0</span>            <span class="mi">1</span>            <span class="mi">0</span>            <span class="mi">1</span>
+           <span class="mi">1</span>            <span class="mi">0</span>            <span class="mi">0</span>            <span class="mi">1</span>            <span class="mi">0</span>
+           <span class="mi">0</span>            <span class="mi">1</span>            <span class="mi">0</span>            <span class="mi">1</span>            <span class="mi">0</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+
+<span class="c1"># Author: Warren Weckesser, Enthought, Inc.</span>
+
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+
+<span class="k">def</span> <span class="nf">_to_string</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">join</span><span class="p">):</span>
+    <span class="c1"># `name` is either a string, or a tuple of the form (string, value).</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">join</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="k">return</span> <span class="n">s</span>
+
+
+<span class="k">def</span> <span class="nf">bool_fields</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">exclude_fields</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">join</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">bool_dtype</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert some fields of a structured array to a group of boolean fields.</span>
+
+<span class="sd">    For each field name in `fields`, the unique values in that fields are found,</span>
+<span class="sd">    and boolean fields are generated in the output array, one field for each</span>
+<span class="sd">    unique value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a : numpy structured array</span>
+<span class="sd">        Array with fields to be converted.</span>
+<span class="sd">    fields : list of str</span>
+<span class="sd">        The names of the fields in `a` to be expanded into boolean fields.</span>
+<span class="sd">    exclude_fields : list of str, optional</span>
+<span class="sd">        A list of field names that should not be copied to the new array.</span>
+<span class="sd">        (A field name occurring in `fields` overrides its occurrence in</span>
+<span class="sd">        `exclude_fields`.)</span>
+<span class="sd">    join : str, optional</span>
+<span class="sd">        The string used to create the field names of the new boolean</span>
+<span class="sd">        fields.  Default is &#39;.&#39;.</span>
+<span class="sd">    bool_dtype : numpy dtype, optional</span>
+<span class="sd">        The numpy data type of the &quot;boolean&quot; fields created by this</span>
+<span class="sd">        function.  Default is `numpy.dtype(numpy.bool)`.</span>
+
+<span class="sd">    Return value</span>
+<span class="sd">    ------------</span>
+<span class="sd">    b : numpy structured array</span>
+
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    `x` is our sample data:</span>
+
+<span class="sd">    &gt;&gt;&gt; dt = np.dtype([(&#39;color&#39;, &#39;S10&#39;), (&#39;code&#39;, np.int), (&#39;height&#39;, np.float64)])</span>
+<span class="sd">    &gt;&gt;&gt; x = array([(&#39;purple&#39;, 10, 1.5),</span>
+<span class="sd">                   (&#39;red&#39;, 20, 2.0),</span>
+<span class="sd">                   (&#39;red&#39;, 20, 2.5),</span>
+<span class="sd">                   (&#39;blue&#39;, 10, 1.25),</span>
+<span class="sd">                   (&#39;purple&#39;, 10, 4.0)], dtype=dt)</span>
+
+<span class="sd">    Use bool_fields() to expand the categorical data in the `color` and `code`</span>
+<span class="sd">    fields into separate boolean fields:</span>
+
+<span class="sd">    &gt;&gt;&gt; bool_fields(x, fields=[&#39;color&#39;, &#39;code&#39;])</span>
+<span class="sd">    array([(False, True, False, True, False, 1.5),</span>
+<span class="sd">           (False, False, True, False, True, 2.0),</span>
+<span class="sd">           (False, False, True, False, True, 2.5),</span>
+<span class="sd">           (True, False, False, True, False, 1.25),</span>
+<span class="sd">           (False, True, False, True, False, 4.0)], </span>
+<span class="sd">          dtype=[(&#39;color.blue&#39;, &#39;?&#39;), (&#39;color.purple&#39;, &#39;?&#39;), (&#39;color.red&#39;, &#39;?&#39;),</span>
+<span class="sd">                    (&#39;code.10&#39;, &#39;?&#39;), (&#39;code.20&#39;, &#39;?&#39;), (&#39;height&#39;, &#39;&lt;f8&#39;)])</span>
+
+<span class="sd">    Convert just the `color` field, and use integer values instead of boolean</span>
+<span class="sd">    in the new fields:</span>
+
+<span class="sd">    &gt;&gt;&gt; bool_fields(x, fields=[&#39;color&#39;], bool_dtype=np.int8)</span>
+<span class="sd">    array([(0, 1, 0, 10, 1.5), (0, 0, 1, 20, 2.0), (0, 0, 1, 20, 2.5),</span>
+<span class="sd">           (1, 0, 0, 10, 1.25), (0, 1, 0, 10, 4.0)], </span>
+<span class="sd">          dtype=[(&#39;color.blue&#39;, &#39;i1&#39;), (&#39;color.purple&#39;, &#39;i1&#39;), (&#39;color.red&#39;, &#39;i1&#39;),</span>
+<span class="sd">                 (&#39;code&#39;, &#39;&lt;i4&#39;), (&#39;height&#39;, &#39;&lt;f8&#39;)])</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">bool_dtype</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">bool_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bool</span>
+
+    <span class="k">if</span> <span class="n">exclude_fields</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">exclude_fields</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Create a list that describes the fields of the new array.</span>
+    <span class="n">new_field_types</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+            <span class="n">bin_cols</span> <span class="o">=</span> <span class="p">[((</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">),</span> <span class="n">bool_dtype</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+            <span class="n">new_field_types</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">bin_cols</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_fields</span><span class="p">:</span>
+            <span class="n">new_field_types</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">name</span><span class="p">]))</span>
+
+    <span class="c1"># dt is the data type of the new array.</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="n">_to_string</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">join</span><span class="p">),</span> <span class="n">typ</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">typ</span> <span class="ow">in</span> <span class="n">new_field_types</span><span class="p">])</span>
+
+    <span class="c1"># Allocate the new (empty) array.</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+
+    <span class="c1"># Fill in the new array.</span>
+    <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">typ</span> <span class="ow">in</span> <span class="n">new_field_types</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field_name</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">field_name</span>
+            <span class="n">bin_field_name</span> <span class="o">=</span> <span class="n">_to_string</span><span class="p">(</span><span class="n">field_name</span><span class="p">,</span> <span class="n">join</span><span class="p">)</span>
+            <span class="n">b</span><span class="p">[</span><span class="n">bin_field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">==</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">b</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">b</span>
+
+
+<span class="k">def</span> <span class="nf">pp_struct_array1d</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;&quot; Pretty-print a 1-d structured array.</span>
+
+<span class="sd">    This is a &quot;quick and dirty&quot; structured array printer.  It will</span>
+<span class="sd">    only handle the simplest 1-d structured arrays.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Only 1-d structured arrays are handled.&#39;</span><span class="p">)</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span>
+    <span class="n">fw</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">))</span>
+    <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%%%d</span><span class="s2">s&quot;</span> <span class="o">%</span> <span class="n">fw</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">fmt</span> <span class="o">%</span> <span class="n">name</span><span class="p">,</span>
+    <span class="k">print</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="n">fw</span><span class="p">,</span>
+    <span class="k">print</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">a</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+            <span class="k">print</span> <span class="n">fmt</span> <span class="o">%</span> <span class="n">row</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>
+        <span class="k">print</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="32-binary-liquid-mixture-immiscibility-and-stability.html" title="previous chapter">Binary Liquid Mixture Immiscibility and Stability</a></li>
+      <li>Next: <a href="36-error-estimates-for-fit-parameters-resulting-from-least-squares-fits-using-bootstrap-resampling.html" title="next chapter">Error estimates for fit parameters resulting from least-squares fits using bootstrap resampling</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/35-convert-categorical-data-in-a-structure-numpy-array-to-boolean-fields.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

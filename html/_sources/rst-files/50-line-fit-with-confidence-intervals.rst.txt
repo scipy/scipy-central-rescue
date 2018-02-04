@@ -1,0 +1,11 @@
+Line Fit with Confidence Intervals
+==================================
+
+**Author:** thomashaslwanter
+
+**Submitted on:** 2012-11-01 01:00:34-07:00
+
+
+
+.. literalinclude:: /Data/code/2012/11/000050/line_fit_with_confidence_intervals.py
+	:language: python

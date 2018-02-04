@@ -1,0 +1,270 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Geometric illustration of the SVD &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Integrating an initial value problem (single ODE)" href="12-integrating-an-initial-value-problem-single-ode.html" />
+    <link rel="prev" title="Delay Embedding" href="7-delay-embedding.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="geometric-illustration-of-the-svd">
+<h1>Geometric illustration of the SVD<a class="headerlink" href="#geometric-illustration-of-the-svd" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> stefan</p>
+<p><strong>Submitted on:</strong> 2011-07-21 16:51:04-07:00</p>
+<p>Given the SVD of a matrix, A, such that</p>
+<p><span class="math">\(A=U \Sigma V^*,\)</span></p>
+<p>plot the columns of <span class="math">\(U\)</span> and <span class="math">\(V\)</span>, and show how vectors on the unit circle are transformed when multiplied by A.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;Illustrate the SVD geometrically.</span>
+
+<span class="sd">:author: Stefan van der Walt</span>
+<span class="sd">:date: 2006</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">matplotlib.patches</span> <span class="kn">import</span> <span class="n">CirclePolygon</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="k">class</span> <span class="nc">CirclePoint</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Draggable arrow on a circle.</span>
+
+<span class="sd">    Clicks within epsilon pixels of arrow head grab the arrow.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">epsilon</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize circle in given axss.&quot;&quot;&quot;</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="n">circ</span> <span class="o">=</span> <span class="n">CirclePolygon</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        <span class="n">circ</span><span class="o">.</span><span class="n">set_fill</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">circ</span><span class="o">.</span><span class="n">set_edgecolor</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+        <span class="n">axes</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">circ</span><span class="p">)</span>
+
+        <span class="n">canvas</span> <span class="o">=</span> <span class="n">circ</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">canvas</span>
+        <span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;button_press_event&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">button_press_callback</span><span class="p">)</span>
+        <span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;button_release_event&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">button_release_callback</span><span class="p">)</span>
+        <span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;motion_notify_event&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">motion_notify_callback</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">circ</span> <span class="o">=</span> <span class="n">circ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow</span> <span class="o">=</span> <span class="bp">None</span> <span class="c1"># Created by set_angle</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span> <span class="o">=</span> <span class="n">circ</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">canvas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">external_hook</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nr_pts</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow_colour</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;default&#39;</span><span class="p">:</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;selected&#39;</span><span class="p">:</span> <span class="s1">&#39;g&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow_mode</span> <span class="o">=</span> <span class="s1">&#39;default&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_angle</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">4.</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_angle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the angle of the arrow.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__angle</span>
+
+    <span class="k">def</span> <span class="nf">set_angle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Point the arrow in the given direction.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__angle</span> <span class="o">=</span> <span class="n">theta</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_arrow</span><span class="p">()</span>
+
+    <span class="n">angle</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">fget</span><span class="o">=</span><span class="n">get_angle</span><span class="p">,</span> <span class="n">fset</span><span class="o">=</span><span class="n">set_angle</span><span class="p">,</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Angle of the arrow.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update_arrow</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Redraw the canvas.&quot;&quot;&quot;</span>
+
+        <span class="c1"># Create a new arrow, and remove the previous one</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arrow</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">artists</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arrow</span><span class="p">)</span>
+        <span class="n">ex</span><span class="p">,</span><span class="n">ey</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">arrow</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+                             <span class="n">length_includes_head</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="n">ac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">arrow_colour</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arrow_mode</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow</span><span class="o">.</span><span class="n">set_edgecolor</span><span class="p">(</span><span class="n">ac</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="n">ac</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">external_hook</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">external_hook</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pos</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return position of arrow tip (x,y).&quot;&quot;&quot;</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">angle</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">button_press_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called when a mouse button is pressed.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">inaxes</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span> <span class="k">return</span>
+
+        <span class="c1"># translate graph coordinates to pixel coordinate</span>
+        <span class="n">transf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">circ</span><span class="o">.</span><span class="n">get_transform</span><span class="p">()</span>
+
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">)</span>
+        <span class="n">ex</span><span class="p">,</span> <span class="n">ey</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">ex</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ey</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Arrow selected</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow_mode</span> <span class="o">=</span> <span class="s1">&#39;selected&#39;</span>
+
+        <span class="n">verts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">circ</span><span class="o">.</span><span class="n">get_verts</span><span class="p">()</span>
+        <span class="n">verts_tf</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">verts</span><span class="p">)</span>
+        <span class="n">cxt</span> <span class="o">=</span> <span class="n">verts_tf</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">cyt</span> <span class="o">=</span> <span class="n">verts_tf</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">cxt</span> <span class="o">-</span> <span class="n">ex</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">cyt</span> <span class="o">-</span> <span class="n">ey</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_arrow</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">button_release_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called when a mouse button is released.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrow_mode</span> <span class="o">=</span> <span class="s1">&#39;default&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_arrow</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">motion_notify_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called on mouse movement.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arrow_mode</span> <span class="o">==</span> <span class="s1">&#39;selected&#39;</span><span class="p">:</span>
+            <span class="n">transf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">circ</span><span class="o">.</span><span class="n">get_transform</span><span class="p">()</span>
+            <span class="n">xt</span><span class="p">,</span><span class="n">yt</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="n">inverted</span><span class="p">()</span><span class="o">.</span><span class="n">transform</span><span class="p">((</span><span class="n">event</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">y</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">angle</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">yt</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_arrow</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">SVD_Geometry</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">M</span><span class="p">):</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+        <span class="n">cp</span> <span class="o">=</span> <span class="n">CirclePoint</span><span class="p">()</span>
+        <span class="n">cp</span><span class="o">.</span><span class="n">external_hook</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_tf</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">axes</span>
+
+        <span class="n">axis_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">])</span>
+        <span class="n">axis_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">])</span>
+
+        <span class="n">U</span><span class="p">,</span><span class="n">S</span><span class="p">,</span><span class="n">Vt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+        <span class="n">V</span> <span class="o">=</span> <span class="n">Vt</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+
+        <span class="n">eig_vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([(</span><span class="n">U</span><span class="o">*</span><span class="n">S</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(),</span><span class="n">V</span><span class="o">.</span><span class="n">transpose</span><span class="p">()])</span>
+        <span class="n">colours</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">,</span><span class="s1">&#39;m&#39;</span><span class="p">,</span><span class="s1">&#39;c&#39;</span><span class="p">,</span><span class="s1">&#39;c&#39;</span><span class="p">]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;U&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;V&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">ev</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">eig_vecs</span><span class="p">):</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">arrow</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">*</span><span class="n">ev</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+                                      <span class="s1">&#39;length_includes_head&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">})</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">set_edgecolor</span><span class="p">(</span><span class="n">colours</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="n">colours</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">ev</span> <span class="o">/</span> <span class="mf">1.5</span><span class="p">)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]])))</span>
+
+            <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">ev</span> <span class="o">&gt;</span> <span class="n">axis_max</span><span class="p">)</span>
+            <span class="n">axis_max</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">ev</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">ev</span> <span class="o">&lt;</span> <span class="n">axis_min</span><span class="p">)</span>
+            <span class="n">axis_min</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">ev</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">M</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cp</span> <span class="o">=</span> <span class="n">cp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_patch</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span>
+
+        <span class="c1"># Maximum axis dimension is extent of bounding box</span>
+        <span class="n">am</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">axis_max</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="nb">abs</span><span class="p">(</span><span class="n">axis_min</span><span class="o">.</span><span class="n">min</span><span class="p">()))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">([</span><span class="o">-</span><span class="mf">1.5</span><span class="o">*</span><span class="n">am</span><span class="p">,</span> <span class="mf">1.5</span><span class="o">*</span><span class="n">am</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.5</span><span class="o">*</span><span class="n">am</span><span class="p">,</span> <span class="mf">1.5</span><span class="o">*</span><span class="n">am</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Geometrical Illustration of the SVD&quot;</span><span class="p">,</span>
+                 <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span><span class="o">.</span><span class="n">set_weight</span><span class="p">(</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;A unit vector, indicated by the red arrow, is multiplied &quot;</span>
+                <span class="s2">&quot;by</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s2"> to form a blue dot.&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Click and drag the tip of &quot;</span>
+                 <span class="s2">&quot;the red arrow.&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">&quot;italic&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot_tf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cp</span><span class="o">.</span><span class="n">pos</span><span class="p">)),</span>
+                                <span class="mf">0.01</span><span class="p">))</span>
+
+<span class="n">demo</span> <span class="o">=</span> <span class="n">SVD_Geometry</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]]))</span>
+
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="7-delay-embedding.html" title="previous chapter">Delay Embedding</a></li>
+      <li>Next: <a href="12-integrating-an-initial-value-problem-single-ode.html" title="next chapter">Integrating an initial value problem (single ODE)</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/11-geometric-illustration-of-the-svd.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

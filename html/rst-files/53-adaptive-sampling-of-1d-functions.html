@@ -1,0 +1,263 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Adaptive sampling of 1D functions &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Adaptive sampling of 2-D functions" href="54-adaptive-sampling-of-2-d-functions.html" />
+    <link rel="prev" title="Line Fit with Confidence Intervals" href="50-line-fit-with-confidence-intervals.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="adaptive-sampling-of-1d-functions">
+<h1>Adaptive sampling of 1D functions<a class="headerlink" href="#adaptive-sampling-of-1d-functions" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> pv</p>
+<p><strong>Submitted on:</strong> 2012-11-22 08:20:03-08:00</p>
+<p>Sample a 1D function to given tolerance by adaptive subdivision.</p>
+<p>The result of sampling is a set of points that, if plotted, produces a smooth curve with also sharp features of the function resolved.</p>
+<p>This routine is useful in computing functions that are expensive to compute, and have sharp features --- it makes more sense to adaptively dedicate more sampling points for the sharp features than the smooth parts.</p>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="sd">&#39;&#39;&#39;Function with a sharp peak on a smooth background&#39;&#39;&#39;</span>
+<span class="gp">... </span>    <span class="n">a</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">a</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">sample_function</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12000</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">func</span><span class="p">(</span><span class="n">xx</span><span class="p">),</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img alt="../_images/sampling.png" src="../_images/sampling.png" />
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">sample_function</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">min_points</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">max_level</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                    <span class="n">sample_transform</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sample a 1D function to given tolerance by adaptive subdivision.</span>
+
+<span class="sd">    The result of sampling is a set of points that, if plotted,</span>
+<span class="sd">    produces a smooth curve with also sharp features of the function</span>
+<span class="sd">    resolved.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    func : callable</span>
+<span class="sd">        Function func(x) of a single argument. It is assumed to be vectorized.</span>
+<span class="sd">    points : array-like, 1D</span>
+<span class="sd">        Initial points to sample, sorted in ascending order.</span>
+<span class="sd">        These will determine also the bounds of sampling.</span>
+<span class="sd">    tol : float, optional</span>
+<span class="sd">        Tolerance to sample to. The condition is roughly that the total</span>
+<span class="sd">        length of the curve on the (x, y) plane is computed up to this</span>
+<span class="sd">        tolerance.</span>
+<span class="sd">    min_point : int, optional</span>
+<span class="sd">        Minimum number of points to sample.</span>
+<span class="sd">    max_level : int, optional</span>
+<span class="sd">        Maximum subdivision depth.</span>
+<span class="sd">    sample_transform : callable, optional</span>
+<span class="sd">        Function w = g(x, y). The x-samples are generated so that w</span>
+<span class="sd">        is sampled.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x : ndarray</span>
+<span class="sd">        X-coordinates</span>
+<span class="sd">    y : ndarray</span>
+<span class="sd">        Corresponding values of func(x)</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    This routine is useful in computing functions that are expensive</span>
+<span class="sd">    to compute, and have sharp features --- it makes more sense to</span>
+<span class="sd">    adaptively dedicate more sampling points for the sharp features</span>
+<span class="sd">    than the smooth parts.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; def func(x):</span>
+<span class="sd">    ...     &#39;&#39;&#39;Function with a sharp peak on a smooth background&#39;&#39;&#39;</span>
+<span class="sd">    ...     a = 0.001</span>
+<span class="sd">    ...     return x + a**2/(a**2 + x**2)</span>
+<span class="sd">    ...</span>
+<span class="sd">    &gt;&gt;&gt; x, y = sample_function(func, [-1, 1], tol=1e-3)</span>
+
+<span class="sd">    &gt;&gt;&gt; import matplotlib.pyplot as plt</span>
+<span class="sd">    &gt;&gt;&gt; xx = np.linspace(-1, 1, 12000)</span>
+<span class="sd">    &gt;&gt;&gt; plt.plot(xx, func(xx), &#39;-&#39;, x, y[0], &#39;.&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; plt.show()</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_sample_function</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                            <span class="n">tol</span><span class="o">=</span><span class="n">tol</span><span class="p">,</span> <span class="n">min_points</span><span class="o">=</span><span class="n">min_points</span><span class="p">,</span> <span class="n">max_level</span><span class="o">=</span><span class="n">max_level</span><span class="p">,</span>
+                            <span class="n">sample_transform</span><span class="o">=</span><span class="n">sample_transform</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_sample_function</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                     <span class="n">depth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">min_points</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">max_level</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                     <span class="n">sample_transform</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="n">points</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">depth</span> <span class="o">&gt;</span> <span class="n">max_level</span><span class="p">:</span>
+        <span class="c1"># recursion limit</span>
+        <span class="k">return</span> <span class="n">points</span><span class="p">,</span> <span class="n">values</span>
+
+    <span class="n">x_a</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="o">...</span><span class="p">,:</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">...</span><span class="p">,</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">x_b</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="mi">1</span><span class="p">:][</span><span class="o">...</span><span class="p">,</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="n">x_c</span> <span class="o">=</span> <span class="o">.</span><span class="mi">5</span><span class="o">*</span><span class="p">(</span><span class="n">x_a</span> <span class="o">+</span> <span class="n">x_b</span><span class="p">)</span>
+    <span class="n">y_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="n">x_c</span><span class="p">))</span>
+
+    <span class="n">x_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">points</span><span class="p">,</span> <span class="n">x_c</span><span class="p">]</span>
+    <span class="n">y_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="s1">&#39;-1&#39;</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">y_c</span><span class="p">]</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">x_2</span><span class="p">)</span>
+
+    <span class="n">x_2</span> <span class="o">=</span> <span class="n">x_2</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+    <span class="n">y_2</span> <span class="o">=</span> <span class="n">y_2</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+
+    <span class="c1"># -- Determine the intervals at which refinement is necessary</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">min_points</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">x_2</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># represent the data as a path in N dimensions (scaled to unit box)</span>
+        <span class="k">if</span> <span class="n">sample_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">y_2_val</span> <span class="o">=</span> <span class="n">sample_transform</span><span class="p">(</span><span class="n">x_2</span><span class="p">,</span> <span class="n">y_2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y_2_val</span> <span class="o">=</span> <span class="n">y_2</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="s1">&#39;0&#39;</span><span class="p">,</span>
+                  <span class="n">x_2</span><span class="p">[</span><span class="bp">None</span><span class="p">,:],</span>
+                  <span class="n">y_2_val</span><span class="o">.</span><span class="n">real</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">y_2_val</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+                  <span class="n">y_2_val</span><span class="o">.</span><span class="n">imag</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">y_2_val</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                  <span class="p">]</span>
+
+        <span class="n">sz</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
+
+        <span class="n">xscale</span> <span class="o">=</span> <span class="n">x_2</span><span class="o">.</span><span class="n">ptp</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">yscale</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">y_2_val</span><span class="o">.</span><span class="n">ptp</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+        <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="n">xscale</span>
+        <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">sz</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">/=</span> <span class="n">yscale</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span>
+        <span class="n">p</span><span class="p">[</span><span class="n">sz</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>  <span class="o">/=</span> <span class="n">yscale</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span>
+
+        <span class="c1"># compute the length of each line segment in the path</span>
+        <span class="n">dp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">dp</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">s_tot</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="c1"># compute the angle between consecutive line segments</span>
+        <span class="n">dp</span> <span class="o">/=</span> <span class="n">s</span>
+        <span class="n">dcos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">((</span><span class="n">dp</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="n">dp</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1"># determine where to subdivide: the condition is roughly that</span>
+        <span class="c1"># the total length of the path (in the scaled data) is computed</span>
+        <span class="c1"># to accuracy `tol`</span>
+        <span class="n">dp_piece</span> <span class="o">=</span> <span class="n">dcos</span> <span class="o">*</span> <span class="o">.</span><span class="mi">5</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">s</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">dp_piece</span> <span class="o">&gt;</span> <span class="n">tol</span> <span class="o">*</span> <span class="n">s_tot</span><span class="p">)</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="bp">False</span><span class="p">]</span>
+        <span class="n">mask</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">|=</span> <span class="n">mask</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+
+    <span class="c1"># -- Refine, if necessary</span>
+
+    <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">_sample_function</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">x_2</span><span class="p">,</span> <span class="n">y_2</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="n">tol</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">depth</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span>
+                                <span class="n">min_points</span><span class="o">=</span><span class="n">min_points</span><span class="p">,</span> <span class="n">max_level</span><span class="o">=</span><span class="n">max_level</span><span class="p">,</span>
+                                <span class="n">sample_transform</span><span class="o">=</span><span class="n">sample_transform</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x_2</span><span class="p">,</span> <span class="n">y_2</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="50-line-fit-with-confidence-intervals.html" title="previous chapter">Line Fit with Confidence Intervals</a></li>
+      <li>Next: <a href="54-adaptive-sampling-of-2-d-functions.html" title="next chapter">Adaptive sampling of 2-D functions</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/53-adaptive-sampling-of-1d-functions.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

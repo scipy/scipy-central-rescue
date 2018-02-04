@@ -1,0 +1,226 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Savitzky-Golay Filter &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Line Fit with Confidence Intervals" href="50-line-fit-with-confidence-intervals.html" />
+    <link rel="prev" title="Circumscribed Circle (CSC) for N randomly located 2-D points" href="48-circumscribed-circle-csc-for-n-randomly-located-2-d-points.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="savitzky-golay-filter">
+<h1>Savitzky-Golay Filter<a class="headerlink" href="#savitzky-golay-filter" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> thomashaslwanter</p>
+<p><strong>Submitted on:</strong> 2012-11-01 00:57:23-07:00</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">savgol</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">deriv</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">rate</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Smooth (and optionally differentiate) data with a Savitzky-Golay filter.</span>
+
+<span class="sd">    The Savitzky-Golay filter removes high frequency noise from data.</span>
+<span class="sd">    It has the advantage of preserving the original shape and</span>
+<span class="sd">    features of the signal better than other types of filtering</span>
+<span class="sd">    approaches, such as moving averages techhniques.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    y : array_like, shape (N,)</span>
+<span class="sd">        the values of the time history of the signal.</span>
+<span class="sd">    window_size : int</span>
+<span class="sd">        the length of the window. Must be an odd integer number.</span>
+<span class="sd">    order : int</span>
+<span class="sd">        the order of the polynomial used in the filtering.</span>
+<span class="sd">        Must be less then `window_size` - 1.</span>
+<span class="sd">    deriv: int</span>
+<span class="sd">        the order of the derivative to compute (default = 0 means only smoothing)</span>
+<span class="sd">    rate: sampling rate (in Hz; only used for derivatives)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ys : ndarray, shape (N)</span>
+<span class="sd">        the smoothed signal (or it&#39;s n-th derivative).</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The Savitzky-Golay is a type of low-pass filter, particularly</span>
+<span class="sd">    suited for smoothing noisy data. The main idea behind this</span>
+<span class="sd">    approach is to make for each point a least-square fit with a</span>
+<span class="sd">    polynomial of high order over a odd-sized window centered at</span>
+<span class="sd">    the point.</span>
+
+<span class="sd">    The data at the beginning / end of the sample are deterimined from</span>
+<span class="sd">    the best polynomial fit to the first / last datapoints. This makes the code</span>
+<span class="sd">    a bit more complicated, but avoids wild artefacts at the beginning and the</span>
+<span class="sd">    end.</span>
+
+<span class="sd">    &quot;Cutoff-frequencies&quot;:</span>
+<span class="sd">    	for smoothing (deriv=0), the frequency where</span>
+<span class="sd">    	the amplitude is reduced by 10% is approximately given by</span>
+<span class="sd">    		f_cutoff = sampling_rate / (1.5 * look)</span>
+
+<span class="sd">    	for the first derivative (deriv=1), the frequency where</span>
+<span class="sd">    	the amplitude is reduced by 10% is approximately given by</span>
+<span class="sd">    		f_cutoff = sampling_rate / (4 * look)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; t = np.linspace(-4, 4, 500)</span>
+<span class="sd">    &gt;&gt;&gt; y = np.exp( -t**2 ) + np.random.normal(0, 0.05, t.shape)</span>
+<span class="sd">    &gt;&gt;&gt; ysg = savitzky_golay(y, window_size=31, order=4)</span>
+<span class="sd">    &gt;&gt;&gt; import matplotlib.pyplot as plt</span>
+<span class="sd">    &gt;&gt;&gt; plt.plot(t, y, label=&#39;Noisy signal&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; plt.plot(t, np.exp(-t**2), &#39;k&#39;, lw=1.5, label=&#39;Original signal&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; plt.plot(t, ysg, &#39;r&#39;, label=&#39;Filtered signal&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; plt.legend()</span>
+<span class="sd">    &gt;&gt;&gt; plt.show()</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] A. Savitzky, M. J. E. Golay, Smoothing and Differentiation of</span>
+<span class="sd">       Data by Simplified Least Squares Procedures. Analytical</span>
+<span class="sd">       Chemistry, 1964, 36 (8), pp 1627-1639.</span>
+<span class="sd">    .. [2] Numerical Recipes 3rd Edition: The Art of Scientific Computing</span>
+<span class="sd">       W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery</span>
+<span class="sd">       Cambridge University Press ISBN-13: 9780521880688</span>
+<span class="sd">    .. [3] Siegmund Brandt, Datenanalyse, pp 435</span>
+
+<span class="sd">    Author: Thomas Haslwanter</span>
+<span class="sd">    Version: 1.0</span>
+<span class="sd">    Date: 25-July-2012</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Check the input</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">window_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">window_size</span><span class="p">))</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">order</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;window_size and order have to be of type int&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">window_size</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Not enough data points!&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">window_size</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">window_size</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;window_size size must be a positive odd number&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">window_size</span> <span class="o">&lt;</span> <span class="n">order</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;window_size is too small for the polynomials order&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">order</span> <span class="o">&lt;=</span> <span class="n">deriv</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;The &#39;deriv&#39; of the polynomial is too high.&quot;</span><span class="p">)</span>
+
+
+    <span class="c1"># Calculate some required parameters</span>
+    <span class="n">order_range</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">order</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">half_window</span> <span class="o">=</span> <span class="p">(</span><span class="n">window_size</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">num_data</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="c1"># Construct Vandermonde matrix, its inverse, and the Savitzky-Golay coefficients</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="p">[[</span><span class="n">ii</span><span class="o">**</span><span class="n">jj</span> <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="n">order_range</span><span class="p">]</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">half_window</span><span class="p">,</span> <span class="n">half_window</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+    <span class="n">pa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+    <span class="n">sg_coeff</span> <span class="o">=</span> <span class="n">pa</span><span class="p">[</span><span class="n">deriv</span><span class="p">]</span> <span class="o">*</span> <span class="n">rate</span><span class="o">**</span><span class="n">deriv</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">deriv</span><span class="p">)</span>
+
+    <span class="c1"># Get the coefficients for the fits at the beginning and at the end of the data</span>
+    <span class="n">coefs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">order_range</span><span class="p">)</span><span class="o">**</span><span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">deriv</span><span class="p">)</span>
+    <span class="n">coef_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">order</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">order</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">deriv</span><span class="p">,</span><span class="n">order</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">coef</span> <span class="o">=</span> <span class="n">coefs</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">deriv</span><span class="p">):</span>
+            <span class="n">coef</span> <span class="o">*=</span> <span class="p">(</span><span class="n">coefs</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">-</span><span class="n">jj</span><span class="p">)</span>
+        <span class="n">coef_mat</span><span class="p">[</span><span class="n">row</span><span class="p">,</span><span class="n">row</span><span class="o">+</span><span class="n">deriv</span><span class="p">]</span><span class="o">=</span><span class="n">coef</span>
+        <span class="n">row</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">coef_mat</span> <span class="o">*=</span> <span class="n">rate</span><span class="o">**</span><span class="n">deriv</span>
+
+    <span class="c1"># Add the first and last point half_window times</span>
+    <span class="n">firstvals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">half_window</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">lastvals</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">half_window</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">x_calc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">firstvals</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">lastvals</span><span class="p">))</span>
+
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span> <span class="n">sg_coeff</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">x_calc</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">)</span>
+
+    <span class="c1"># chop away intermediate data</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">window_size</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="n">window_size</span><span class="o">+</span><span class="n">num_data</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># filtering for the first and last few datapoints</span>
+    <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">half_window</span><span class="p">]</span> <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">half_window</span><span class="p">],</span> <span class="n">coef_mat</span><span class="p">),</span> \
+                                   <span class="n">np</span><span class="o">.</span><span class="n">mat</span><span class="p">(</span><span class="n">pa</span><span class="p">)),</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">window_size</span><span class="p">])</span>
+    <span class="n">y</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">-</span><span class="n">half_window</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)]</span> <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">half_window</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">window_size</span><span class="p">],</span> \
+                        <span class="n">coef_mat</span><span class="p">),</span> <span class="n">pa</span><span class="p">),</span> <span class="n">x</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">-</span><span class="n">window_size</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)])</span>
+
+    <span class="k">return</span> <span class="n">y</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="48-circumscribed-circle-csc-for-n-randomly-located-2-d-points.html" title="previous chapter">Circumscribed Circle (CSC) for N randomly located 2-D points</a></li>
+      <li>Next: <a href="50-line-fit-with-confidence-intervals.html" title="next chapter">Line Fit with Confidence Intervals</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/49-savitzky-golay-filter.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,300 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>N-dimensional normal probability density function &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="f2py with opaque Fortran derived types" href="60-f2py-with-opaque-fortran-derived-types.html" />
+    <link rel="prev" title="pcolor-like plotting wrapper for imshow" href="55-pcolor-like-plotting-wrapper-for-imshow.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="n-dimensional-normal-probability-density-function">
+<h1>N-dimensional normal probability density function<a class="headerlink" href="#n-dimensional-normal-probability-density-function" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> matthewbrett</p>
+<p><strong>Submitted on:</strong> 2012-11-24 15:22:59-08:00</p>
+<p>Comments are in docstrings.  Implements 1D and ND normal distribution PDFs :</p>
+<p><a class="reference external" href="http://en.wikipedia.org/wiki/Normal_distribution">http://en.wikipedia.org/wiki/Normal_distribution</a>
+<a class="reference external" href="http://en.wikipedia.org/wiki/Multivariate_normal_distribution">http://en.wikipedia.org/wiki/Multivariate_normal_distribution</a></p>
+<p>Not tested in the non-zero off-diagonal covariance case.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+<span class="sd">&quot;&quot;&quot; N-dimensional normal PDFs</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">sqrt</span><span class="p">,</span> <span class="n">pi</span><span class="p">,</span> <span class="n">exp</span>
+
+<span class="k">def</span> <span class="nf">npdf_1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mu</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sigma2</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; 1D normal PDF for input vector `x`, given mean `mu`, variance `sigma2`</span>
+
+<span class="sd">    http://en.wikipedia.org/wiki/Normal_distribution</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        f(x;\mu,\sigma^2) = \frac{1}{\sigma\sqrt{2\pi}} e^{ -\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2 }</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : scalar or length N vector</span>
+<span class="sd">        If scalar, value at which to evaluate PDF.  If vector, vector of values</span>
+<span class="sd">        at which to evaluate PDF</span>
+<span class="sd">    mu : scalar, optional</span>
+<span class="sd">        mean for normal distribution</span>
+<span class="sd">    sigma2 : scalar, optional</span>
+<span class="sd">        variance of normal distribution (:math:`sigma^2`)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pdf_vals : scalar or length N vector</span>
+<span class="sd">        If `x` was a scalar, return scalar value for PDF.  If `x`</span>
+<span class="sd">        was vector length N, return length N vector giving values for each of</span>
+<span class="sd">        specified N points.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+    <span class="n">sigma2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">sigma2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">sigma2</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">mu</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">sigma2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">npdf_nd</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mu</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sigma2</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; ND normal PDF, given mean vector `mu` and covariance matrix `sigma2`</span>
+
+<span class="sd">    http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Density_function</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        f_{\mathbf x}(x_1,\ldots,x_k)\, =</span>
+<span class="sd">        \frac{1}{(2\pi)^{k/2}|\boldsymbol\Sigma|^{1/2}}</span>
+<span class="sd">        \exp\left(-\frac{1}{2}({\mathbf x}-{\boldsymbol\mu})^T{\boldsymbol\Sigma}^{-1}({\mathbf x}-{\boldsymbol\mu})</span>
+<span class="sd">        \right)</span>
+
+<span class="sd">    where :math:`\left|\boldsymbol\Sigma\right|` is the determinant of</span>
+<span class="sd">    :math:`\boldsymbol\Sigma`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : scalar or length D vector or shape (D, N) array</span>
+<span class="sd">        If vector, length of vector is dimension of PDF.  If 2D array then ``D``</span>
+<span class="sd">        is dimension of PDF and ``N`` is number of samples.</span>
+<span class="sd">    mu : scalar or length D vector</span>
+<span class="sd">        means for normal distribution for each dimension of PDF.  If scalar,</span>
+<span class="sd">        mean is the same for each dimension</span>
+<span class="sd">    sigma2 : scalar or length D vector or (D, D) array</span>
+<span class="sd">        If scalar, gives variance for all D dimensions of PDF.  If vector, gives</span>
+<span class="sd">        diagonal of covariance matrix (one variance for each dimension,</span>
+<span class="sd">        dimensions are independent).  If (D, D) array gives full covariance</span>
+<span class="sd">        matrix for dimensions of PDF.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pdf_vals : scalar or length N vector</span>
+<span class="sd">        If `x` was a scalar or a vector, return scalar value for PDF.  If `x`</span>
+<span class="sd">        was shape (D, N) return length N vector giving values for each of</span>
+<span class="sd">        specified N points.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> <span class="c1"># dimension of normal is length of row axis</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">None</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">k</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mu</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[:,</span> <span class="bp">None</span><span class="p">]</span>
+    <span class="n">x_mu</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">mu</span>
+    <span class="n">sigma2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sigma2</span><span class="p">)</span>
+    <span class="c1"># Use shortcuts for simple sigma2s</span>
+    <span class="k">if</span> <span class="n">sigma2</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> <span class="c1"># sigma2 is scalar</span>
+        <span class="n">isigma2_x_mu</span> <span class="o">=</span> <span class="n">x_mu</span> <span class="o">/</span> <span class="n">sigma2</span>
+        <span class="n">sigma2_det</span> <span class="o">=</span> <span class="n">sigma2</span> <span class="o">**</span> <span class="n">k</span>
+    <span class="k">elif</span> <span class="n">sigma2</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> <span class="c1"># sigma2 is the diagonal</span>
+        <span class="n">isigma2_x_mu</span> <span class="o">=</span> <span class="n">x_mu</span> <span class="o">/</span> <span class="n">sigma2</span><span class="p">[:,</span> <span class="bp">None</span><span class="p">]</span>
+        <span class="n">sigma2_det</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">sigma2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="c1"># sigma2 is covariance matrix</span>
+        <span class="n">isigma2_x_mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">sigma2</span><span class="p">),</span> <span class="n">x_mu</span><span class="p">)</span>
+        <span class="n">sigma2_det</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">sigma2</span><span class="p">)</span>
+    <span class="c1"># Formula above does not apply to matrices but to vectors</span>
+    <span class="n">to_exp</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_mu</span> <span class="o">*</span> <span class="n">isigma2_x_mu</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">front</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">k</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sigma2_det</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">front</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">to_exp</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">test_pdf</span><span class="p">():</span>
+    <span class="c1"># Test values from:</span>
+    <span class="c1"># repr(ssd.norm(0, 1).pdf(np.linspace(-5, 5, 100)))</span>
+    <span class="kn">from</span> <span class="nn">numpy.testing</span> <span class="kn">import</span> <span class="n">assert_array_almost_equal</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="c1"># Test values from:</span>
+    <span class="c1"># repr(ssd.norm(0, 1).pdf(np.linspace(-5, 5, 100)))</span>
+    <span class="n">exp_vals_0_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.48671951e-06</span><span class="p">,</span>   <span class="mf">2.45106104e-06</span><span class="p">,</span>   <span class="mf">3.99989037e-06</span><span class="p">,</span>
+                             <span class="mf">6.46116639e-06</span><span class="p">,</span>   <span class="mf">1.03310066e-05</span><span class="p">,</span>   <span class="mf">1.63509589e-05</span><span class="p">,</span>
+                             <span class="mf">2.56160812e-05</span><span class="p">,</span>   <span class="mf">3.97238224e-05</span><span class="p">,</span>   <span class="mf">6.09759040e-05</span><span class="p">,</span>
+                             <span class="mf">9.26476353e-05</span><span class="p">,</span>   <span class="mf">1.39341123e-04</span><span class="p">,</span>   <span class="mf">2.07440309e-04</span><span class="p">,</span>
+                             <span class="mf">3.05686225e-04</span><span class="p">,</span>   <span class="mf">4.45889725e-04</span><span class="p">,</span>   <span class="mf">6.43795498e-04</span><span class="p">,</span>
+                             <span class="mf">9.20104770e-04</span><span class="p">,</span>   <span class="mf">1.30165384e-03</span><span class="p">,</span>   <span class="mf">1.82273110e-03</span><span class="p">,</span>
+                             <span class="mf">2.52649578e-03</span><span class="p">,</span>   <span class="mf">3.46643792e-03</span><span class="p">,</span>   <span class="mf">4.70779076e-03</span><span class="p">,</span>
+                             <span class="mf">6.32877643e-03</span><span class="p">,</span>   <span class="mf">8.42153448e-03</span><span class="p">,</span>   <span class="mf">1.10925548e-02</span><span class="p">,</span>
+                             <span class="mf">1.44624148e-02</span><span class="p">,</span>   <span class="mf">1.86646099e-02</span><span class="p">,</span>   <span class="mf">2.38432745e-02</span><span class="p">,</span>
+                             <span class="mf">3.01496139e-02</span><span class="p">,</span>   <span class="mf">3.77369231e-02</span><span class="p">,</span>   <span class="mf">4.67541424e-02</span><span class="p">,</span>
+                             <span class="mf">5.73380051e-02</span><span class="p">,</span>   <span class="mf">6.96039584e-02</span><span class="p">,</span>   <span class="mf">8.36361772e-02</span><span class="p">,</span>
+                             <span class="mf">9.94771388e-02</span><span class="p">,</span>   <span class="mf">1.17117360e-01</span><span class="p">,</span>   <span class="mf">1.36486009e-01</span><span class="p">,</span>
+                             <span class="mf">1.57443188e-01</span><span class="p">,</span>   <span class="mf">1.79774665e-01</span><span class="p">,</span>   <span class="mf">2.03189836e-01</span><span class="p">,</span>
+                             <span class="mf">2.27323506e-01</span><span class="p">,</span>   <span class="mf">2.51741947e-01</span><span class="p">,</span>   <span class="mf">2.75953371e-01</span><span class="p">,</span>
+                             <span class="mf">2.99422683e-01</span><span class="p">,</span>   <span class="mf">3.21590023e-01</span><span class="p">,</span>   <span class="mf">3.41892294e-01</span><span class="p">,</span>
+                             <span class="mf">3.59786558e-01</span><span class="p">,</span>   <span class="mf">3.74773979e-01</span><span class="p">,</span>   <span class="mf">3.86422853e-01</span><span class="p">,</span>
+                             <span class="mf">3.94389234e-01</span><span class="p">,</span>   <span class="mf">3.98433802e-01</span><span class="p">,</span>   <span class="mf">3.98433802e-01</span><span class="p">,</span>
+                             <span class="mf">3.94389234e-01</span><span class="p">,</span>   <span class="mf">3.86422853e-01</span><span class="p">,</span>   <span class="mf">3.74773979e-01</span><span class="p">,</span>
+                             <span class="mf">3.59786558e-01</span><span class="p">,</span>   <span class="mf">3.41892294e-01</span><span class="p">,</span>   <span class="mf">3.21590023e-01</span><span class="p">,</span>
+                             <span class="mf">2.99422683e-01</span><span class="p">,</span>   <span class="mf">2.75953371e-01</span><span class="p">,</span>   <span class="mf">2.51741947e-01</span><span class="p">,</span>
+                             <span class="mf">2.27323506e-01</span><span class="p">,</span>   <span class="mf">2.03189836e-01</span><span class="p">,</span>   <span class="mf">1.79774665e-01</span><span class="p">,</span>
+                             <span class="mf">1.57443188e-01</span><span class="p">,</span>   <span class="mf">1.36486009e-01</span><span class="p">,</span>   <span class="mf">1.17117360e-01</span><span class="p">,</span>
+                             <span class="mf">9.94771388e-02</span><span class="p">,</span>   <span class="mf">8.36361772e-02</span><span class="p">,</span>   <span class="mf">6.96039584e-02</span><span class="p">,</span>
+                             <span class="mf">5.73380051e-02</span><span class="p">,</span>   <span class="mf">4.67541424e-02</span><span class="p">,</span>   <span class="mf">3.77369231e-02</span><span class="p">,</span>
+                             <span class="mf">3.01496139e-02</span><span class="p">,</span>   <span class="mf">2.38432745e-02</span><span class="p">,</span>   <span class="mf">1.86646099e-02</span><span class="p">,</span>
+                             <span class="mf">1.44624148e-02</span><span class="p">,</span>   <span class="mf">1.10925548e-02</span><span class="p">,</span>   <span class="mf">8.42153448e-03</span><span class="p">,</span>
+                             <span class="mf">6.32877643e-03</span><span class="p">,</span>   <span class="mf">4.70779076e-03</span><span class="p">,</span>   <span class="mf">3.46643792e-03</span><span class="p">,</span>
+                             <span class="mf">2.52649578e-03</span><span class="p">,</span>   <span class="mf">1.82273110e-03</span><span class="p">,</span>   <span class="mf">1.30165384e-03</span><span class="p">,</span>
+                             <span class="mf">9.20104770e-04</span><span class="p">,</span>   <span class="mf">6.43795498e-04</span><span class="p">,</span>   <span class="mf">4.45889725e-04</span><span class="p">,</span>
+                             <span class="mf">3.05686225e-04</span><span class="p">,</span>   <span class="mf">2.07440309e-04</span><span class="p">,</span>   <span class="mf">1.39341123e-04</span><span class="p">,</span>
+                             <span class="mf">9.26476353e-05</span><span class="p">,</span>   <span class="mf">6.09759040e-05</span><span class="p">,</span>   <span class="mf">3.97238224e-05</span><span class="p">,</span>
+                             <span class="mf">2.56160812e-05</span><span class="p">,</span>   <span class="mf">1.63509589e-05</span><span class="p">,</span>   <span class="mf">1.03310066e-05</span><span class="p">,</span>
+                             <span class="mf">6.46116639e-06</span><span class="p">,</span>   <span class="mf">3.99989037e-06</span><span class="p">,</span>   <span class="mf">2.45106104e-06</span><span class="p">,</span>
+                             <span class="mf">1.48671951e-06</span><span class="p">])</span>
+    <span class="c1"># repr(ssd.norm(-2.1, 1.3).pdf(np.linspace(-5, 5, 100)))</span>
+    <span class="n">exp_vals_off</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">2.54900148e-02</span><span class="p">,</span>   <span class="mf">3.02228751e-02</span><span class="p">,</span>   <span class="mf">3.56188176e-02</span><span class="p">,</span>
+                             <span class="mf">4.17254715e-02</span><span class="p">,</span>   <span class="mf">4.85848695e-02</span><span class="p">,</span>   <span class="mf">5.62313954e-02</span><span class="p">,</span>
+                             <span class="mf">6.46896370e-02</span><span class="p">,</span>   <span class="mf">7.39722112e-02</span><span class="p">,</span>   <span class="mf">8.40776415e-02</span><span class="p">,</span>
+                             <span class="mf">9.49883782e-02</span><span class="p">,</span>   <span class="mf">1.06669058e-01</span><span class="p">,</span>   <span class="mf">1.19065099e-01</span><span class="p">,</span>
+                             <span class="mf">1.32101737e-01</span><span class="p">,</span>   <span class="mf">1.45683583e-01</span><span class="p">,</span>   <span class="mf">1.59694784e-01</span><span class="p">,</span>
+                             <span class="mf">1.73999853e-01</span><span class="p">,</span>   <span class="mf">1.88445194e-01</span><span class="p">,</span>   <span class="mf">2.02861337e-01</span><span class="p">,</span>
+                             <span class="mf">2.17065865e-01</span><span class="p">,</span>   <span class="mf">2.30866976e-01</span><span class="p">,</span>   <span class="mf">2.44067600e-01</span><span class="p">,</span>
+                             <span class="mf">2.56469946e-01</span><span class="p">,</span>   <span class="mf">2.67880353e-01</span><span class="p">,</span>   <span class="mf">2.78114272e-01</span><span class="p">,</span>
+                             <span class="mf">2.87001208e-01</span><span class="p">,</span>   <span class="mf">2.94389425e-01</span><span class="p">,</span>   <span class="mf">3.00150257e-01</span><span class="p">,</span>
+                             <span class="mf">3.04181829e-01</span><span class="p">,</span>   <span class="mf">3.06412054e-01</span><span class="p">,</span>   <span class="mf">3.06800780e-01</span><span class="p">,</span>
+                             <span class="mf">3.05340988e-01</span><span class="p">,</span>   <span class="mf">3.02059003e-01</span><span class="p">,</span>   <span class="mf">2.97013710e-01</span><span class="p">,</span>
+                             <span class="mf">2.90294791e-01</span><span class="p">,</span>   <span class="mf">2.82020073e-01</span><span class="p">,</span>   <span class="mf">2.72332098e-01</span><span class="p">,</span>
+                             <span class="mf">2.61394037e-01</span><span class="p">,</span>   <span class="mf">2.49385129e-01</span><span class="p">,</span>   <span class="mf">2.36495817e-01</span><span class="p">,</span>
+                             <span class="mf">2.22922758e-01</span><span class="p">,</span>   <span class="mf">2.08863900e-01</span><span class="p">,</span>   <span class="mf">1.94513788e-01</span><span class="p">,</span>
+                             <span class="mf">1.80059249e-01</span><span class="p">,</span>   <span class="mf">1.65675584e-01</span><span class="p">,</span>   <span class="mf">1.51523369e-01</span><span class="p">,</span>
+                             <span class="mf">1.37745925e-01</span><span class="p">,</span>   <span class="mf">1.24467491e-01</span><span class="p">,</span>   <span class="mf">1.11792107e-01</span><span class="p">,</span>
+                             <span class="mf">9.98031807e-02</span><span class="p">,</span>   <span class="mf">8.85636804e-02</span><span class="p">,</span>   <span class="mf">7.81168932e-02</span><span class="p">,</span>
+                             <span class="mf">6.84876559e-02</span><span class="p">,</span>   <span class="mf">5.96839661e-02</span><span class="p">,</span>   <span class="mf">5.16988735e-02</span><span class="p">,</span>
+                             <span class="mf">4.45125546e-02</span><span class="p">,</span>   <span class="mf">3.80944748e-02</span><span class="p">,</span>   <span class="mf">3.24055574e-02</span><span class="p">,</span>
+                             <span class="mf">2.74002820e-02</span><span class="p">,</span>   <span class="mf">2.30286566e-02</span><span class="p">,</span>   <span class="mf">1.92380127e-02</span><span class="p">,</span>
+                             <span class="mf">1.59745946e-02</span><span class="p">,</span>   <span class="mf">1.31849205e-02</span><span class="p">,</span>   <span class="mf">1.08169100e-02</span><span class="p">,</span>
+                             <span class="mf">8.82077924e-03</span><span class="p">,</span>   <span class="mf">7.14971486e-03</span><span class="p">,</span>   <span class="mf">5.76034538e-03</span><span class="p">,</span>
+                             <span class="mf">4.61303085e-03</span><span class="p">,</span>   <span class="mf">3.67199623e-03</span><span class="p">,</span>   <span class="mf">2.90533441e-03</span><span class="p">,</span>
+                             <span class="mf">2.28490455e-03</span><span class="p">,</span>   <span class="mf">1.78615041e-03</span><span class="p">,</span>   <span class="mf">1.38786118e-03</span><span class="p">,</span>
+                             <span class="mf">1.07189455e-03</span><span class="p">,</span>   <span class="mf">8.22879282e-04</span><span class="p">,</span>   <span class="mf">6.27911196e-04</span><span class="p">,</span>
+                             <span class="mf">4.76253696e-04</span><span class="p">,</span>   <span class="mf">3.59051317e-04</span><span class="p">,</span>   <span class="mf">2.69062221e-04</span><span class="p">,</span>
+                             <span class="mf">2.00413491e-04</span><span class="p">,</span>   <span class="mf">1.48381316e-04</span><span class="p">,</span>   <span class="mf">1.09196700e-04</span><span class="p">,</span>
+                             <span class="mf">7.98762827e-05</span><span class="p">,</span>   <span class="mf">5.80770046e-05</span><span class="p">,</span>   <span class="mf">4.19728641e-05</span><span class="p">,</span>
+                             <span class="mf">3.01516466e-05</span><span class="p">,</span>   <span class="mf">2.15293787e-05</span><span class="p">,</span>   <span class="mf">1.52802335e-05</span><span class="p">,</span>
+                             <span class="mf">1.07796962e-05</span><span class="p">,</span>   <span class="mf">7.55894320e-06</span><span class="p">,</span>   <span class="mf">5.26858118e-06</span><span class="p">,</span>
+                             <span class="mf">3.65009614e-06</span><span class="p">,</span>   <span class="mf">2.51358146e-06</span><span class="p">,</span>   <span class="mf">1.72051973e-06</span><span class="p">,</span>
+                             <span class="mf">1.17058885e-06</span><span class="p">,</span>   <span class="mf">7.91638932e-07</span><span class="p">,</span>   <span class="mf">5.32142489e-07</span><span class="p">,</span>
+                             <span class="mf">3.55554977e-07</span><span class="p">,</span>   <span class="mf">2.36136771e-07</span><span class="p">,</span>   <span class="mf">1.55882913e-07</span><span class="p">,</span>
+                             <span class="mf">1.02284879e-07</span><span class="p">])</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_1d</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">exp_vals_0_1</span><span class="p">)</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">exp_vals_0_1</span><span class="p">)</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">exp_vals_0_1</span><span class="p">)</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">exp_vals_off</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">x0</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">exp_vals_0_1</span><span class="p">):</span>
+        <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_1d</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">x0</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">exp_vals_off</span><span class="p">):</span>
+        <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_1d</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
+    <span class="c1"># ND should equal 1D</span>
+    <span class="n">xv</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,</span> <span class="p">:]</span> <span class="c1"># points vector, 1D normal</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xv</span><span class="p">),</span> <span class="n">exp_vals_0_1</span><span class="p">)</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xv</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">exp_vals_0_1</span><span class="p">)</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xv</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">exp_vals_0_1</span><span class="p">)</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xv</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">exp_vals_off</span><span class="p">)</span>
+    <span class="c1"># sigma2 shortcuts</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xv</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">]),</span> <span class="n">exp_vals_off</span><span class="p">)</span>
+    <span class="n">xa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">row_stack</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xa</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span>
+                              <span class="n">npdf_nd</span><span class="p">(</span><span class="n">xa</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.3</span> <span class="o">**</span> <span class="mi">2</span><span class="p">]))</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xa</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span>
+                              <span class="n">npdf_nd</span><span class="p">(</span><span class="n">xa</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">assert_array_almost_equal</span><span class="p">(</span><span class="n">npdf_nd</span><span class="p">(</span><span class="n">xa</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span>
+                              <span class="n">npdf_nd</span><span class="p">(</span><span class="n">xa</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.3</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="55-pcolor-like-plotting-wrapper-for-imshow.html" title="previous chapter">pcolor-like plotting wrapper for imshow</a></li>
+      <li>Next: <a href="60-f2py-with-opaque-fortran-derived-types.html" title="next chapter">f2py with opaque Fortran derived types</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/56-n-dimensional-normal-probability-density-function.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

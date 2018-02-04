@@ -1,0 +1,393 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Fitting a Gaussian to noisy data-points &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using Prony&#39;s metho to fit a sum of exponentials" href="31-using-pronys-metho-to-fit-a-sum-of-exponentials.html" />
+    <link rel="prev" title="Load a URL into an array" href="25-load-a-url-into-an-array.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="fitting-a-gaussian-to-noisy-data-points">
+<h1>Fitting a Gaussian to noisy data-points<a class="headerlink" href="#fitting-a-gaussian-to-noisy-data-points" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> stefan</p>
+<p><strong>Submitted on:</strong> 2011-09-22 19:43:41-07:00</p>
+<p>This script reproduces the plots from</p>
+<blockquote>
+<div>H. Guo, <em>A Simple Algorithm for Fitting a Gaussian Function</em>, IEEE Signal Processing Magazine, September 2011,
+pp. 134--137.</div></blockquote>
+<p>The paper describes how to fit a Gaussian function to a set of noisy data-points.  I.e., given points <code class="docutils literal"><span class="pre">(x,</span> <span class="pre">y)</span></code>, find the parameters <span class="math">\(A\)</span> (amplitude), <span class="math">\(\mu\)</span> (mean) and <span class="math">\(\sigma\)</span> (standard deviation) such that</p>
+<div class="math">
+\[y \sim A e^{-(x - \mu)^2 / 2 \sigma^2}.\]</div>
+<p>The paper illustrates four methods:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Least squares fit of a parabola on log(y).</li>
+<li>Same as 1 but using only values of y where y &gt; T.</li>
+<li>Weighted least squares fit, with y-values as weights.</li>
+<li>Iterative weighted least squares fit: iteration of method 3,
+but estimating y's from the fitted model after each round.</li>
+</ol>
+</div></blockquote>
+<p>This script generates two examples: an easy one, on which methods 1 to 3 are successful, followed by a harder one on which only method 4 works.</p>
+<img alt="../_images/gauss_fit.png" src="../_images/gauss_fit.png" />
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Implementation of the methods described in</span>
+<span class="c1">#</span>
+<span class="c1"># Hongwei Guo, &quot;A Simple Algorithm for Fitting a Gaussian Function&quot;</span>
+<span class="c1"># IEEE Signal Processing Magazine, September 2011, pp. 134--137</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Stefan van der Walt, 2011</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy</span> <span class="kn">as</span> <span class="nn">sp</span>
+<span class="kn">import</span> <span class="nn">scipy.linalg</span> <span class="kn">as</span> <span class="nn">sl</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">gauss</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">A</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate Gaussian.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    A : float</span>
+<span class="sd">        Amplitude.</span>
+<span class="sd">    mu : float</span>
+<span class="sd">        Mean.</span>
+<span class="sd">    std : float</span>
+<span class="sd">        Standard deviation.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">A</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">mu</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span>
+
+<span class="k">def</span> <span class="nf">fit_direct</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">F</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">_weights</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Fit a Gaussian to the given data.</span>
+
+<span class="sd">    Returns a fit so that y ~ gauss(x, A, mu, sigma)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray</span>
+<span class="sd">        Sampling positions.</span>
+<span class="sd">    y : ndarray</span>
+<span class="sd">        Sampled values.</span>
+<span class="sd">    F : float</span>
+<span class="sd">        Ignore values of y &lt;= F.</span>
+<span class="sd">    weighted : bool</span>
+<span class="sd">        Whether to use weighted least squares.  If True, weigh</span>
+<span class="sd">        the error function by y, ensuring that small values</span>
+<span class="sd">        has less influence on the outcome.</span>
+
+<span class="sd">    Additional Parameters</span>
+<span class="sd">    ---------------------</span>
+<span class="sd">    _weights : ndarray</span>
+<span class="sd">        Weights used in weighted least squares.  For internal use</span>
+<span class="sd">        by fit_iterative.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    A : float</span>
+<span class="sd">        Amplitude.</span>
+<span class="sd">    mu : float</span>
+<span class="sd">        Mean.</span>
+<span class="sd">    std : float</span>
+<span class="sd">        Standard deviation.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span> <span class="o">&gt;</span> <span class="n">F</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">_weights</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">_weights</span> <span class="o">=</span> <span class="n">y</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_weights</span> <span class="o">=</span> <span class="n">_weights</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="c1"># We do not want to risk working with negative values</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="n">e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">weighted</span><span class="p">:</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">e</span> <span class="o">*</span> <span class="p">(</span><span class="n">_weights</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vander</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="n">e</span><span class="p">[:,</span> <span class="bp">None</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="n">sl</span><span class="o">.</span><span class="n">hankel</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">])]</span>
+
+    <span class="n">ly</span> <span class="o">=</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">ls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ly</span><span class="p">)</span>
+    <span class="n">x_ls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ly</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+    <span class="n">xx_ls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ly</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ls</span><span class="p">,</span> <span class="n">x_ls</span><span class="p">,</span> <span class="n">xx_ls</span><span class="p">])</span>
+
+    <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span> <span class="n">res</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>
+
+    <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="p">(</span><span class="n">b</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">c</span><span class="p">)))</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="o">-</span><span class="n">b</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">c</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">c</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span>
+
+<span class="k">def</span> <span class="nf">fit_iterative</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">F</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Fit a Gaussian to the given data.</span>
+
+<span class="sd">    Returns a fit so that y ~ gauss(x, A, mu, sigma)</span>
+
+<span class="sd">    This function iteratively fits using fit_direct.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray</span>
+<span class="sd">        Sampling positions.</span>
+<span class="sd">    y : ndarray</span>
+<span class="sd">        Sampled values.</span>
+<span class="sd">    F : float</span>
+<span class="sd">        Ignore values of y &lt;= F.</span>
+<span class="sd">    weighted : bool</span>
+<span class="sd">        Whether to use weighted least squares.  If True, weigh</span>
+<span class="sd">        the error function by y, ensuring that small values</span>
+<span class="sd">        has less influence on the outcome.</span>
+<span class="sd">    N : int</span>
+<span class="sd">        Number of iterations.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    A : float</span>
+<span class="sd">        Amplitude.</span>
+<span class="sd">    mu : float</span>
+<span class="sd">        Mean.</span>
+<span class="sd">    std : float</span>
+<span class="sd">        Standard deviation.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">y_</span> <span class="o">=</span> <span class="n">y</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">fit_direct</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">_weights</span><span class="o">=</span><span class="n">y_</span><span class="p">)</span>
+        <span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">p</span>
+        <span class="n">y_</span> <span class="o">=</span> <span class="n">gauss</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">A</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">log_gauss_param</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Give A, mu, sigma, that represent the Gaussian</span>
+
+<span class="sd">    gauss(x, A, mu, sigma),</span>
+
+<span class="sd">    compute the a, b, c that parameterise the parabola</span>
+
+<span class="sd">    log(gauss(x, A, mu, sigma)) ~ a + bx**2 + cx.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">A</span><span class="p">)</span> <span class="o">-</span> <span class="n">mu</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">ss</span><span class="p">,</span> \
+           <span class="mi">2</span> <span class="o">*</span> <span class="n">mu</span> <span class="o">/</span> <span class="n">ss</span><span class="p">,</span> \
+           <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">ss</span>
+    
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">set_printoptions</span><span class="p">(</span><span class="n">precision</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setup_experiment</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span> <span class="n">noise_std</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                         <span class="n">weighted</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+
+        <span class="k">print</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Experiment (A=</span><span class="si">%.2f</span><span class="s2">, mu=</span><span class="si">%.2f</span><span class="s2">, sigma=</span><span class="si">%.2f</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">f</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="mi">10</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">gauss</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">A</span><span class="o">=</span><span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span> <span class="o">+</span> \
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">scale</span><span class="o">=</span><span class="n">noise_std</span><span class="p">)</span>
+
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Noisy data&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Measurement space&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">positive</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span> <span class="o">&gt;</span> <span class="mf">1e-10</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Log space&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">weighted</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">positive</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">positive</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">positive</span><span class="p">]),</span>
+                    <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Noisy data&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;y ln(y)&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">positive</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">positive</span><span class="p">]),</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Noisy data&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;ln(y)&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span>
+
+    <span class="k">def</span> <span class="nf">experiment</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">fit_func</span><span class="o">=</span><span class="n">fit_direct</span><span class="p">,</span> <span class="n">fit_args</span><span class="o">=</span><span class="p">{},</span>
+                   <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Default&#39;</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;k-&#39;</span><span class="p">):</span>
+
+        <span class="n">weighted</span> <span class="o">=</span> <span class="n">fit_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;weighted&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">fit_func</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">fit_args</span><span class="p">)</span>
+        <span class="n">A_</span><span class="p">,</span> <span class="n">mu_</span><span class="p">,</span> <span class="n">sigma_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="n">x_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+        <span class="n">y_</span> <span class="o">=</span> <span class="n">gauss</span><span class="p">(</span><span class="n">x_</span><span class="p">,</span> <span class="n">A</span><span class="o">=</span><span class="n">A_</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu_</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma_</span><span class="p">)</span>
+
+        <span class="k">print</span> <span class="s2">&quot;Parameters [</span><span class="si">%s</span><span class="s2">]: </span><span class="si">%.2f</span><span class="s2">, </span><span class="si">%.2f</span><span class="s2">, </span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">A_</span><span class="p">,</span> <span class="n">mu_</span><span class="p">,</span> <span class="n">sigma_</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">f</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_</span><span class="p">,</span> <span class="n">y_</span><span class="p">,</span> <span class="n">style</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">parabola</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">log_gauss_param</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+        <span class="n">a_</span><span class="p">,</span> <span class="n">b_</span><span class="p">,</span> <span class="n">c_</span> <span class="o">=</span> <span class="n">log_gauss_param</span><span class="p">(</span><span class="n">A_</span><span class="p">,</span> <span class="n">mu_</span><span class="p">,</span> <span class="n">sigma_</span><span class="p">)</span>
+
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">weighted</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_</span><span class="p">,</span> <span class="n">parabola</span><span class="p">(</span><span class="n">x_</span><span class="p">,</span> <span class="n">a_</span><span class="p">,</span> <span class="n">b_</span><span class="p">,</span> <span class="n">c_</span><span class="p">),</span> <span class="n">style</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_</span><span class="p">,</span> <span class="n">y_</span> <span class="o">*</span> <span class="n">parabola</span><span class="p">(</span><span class="n">x_</span><span class="p">,</span> <span class="n">a_</span><span class="p">,</span> <span class="n">b_</span><span class="p">,</span> <span class="n">c_</span><span class="p">),</span> <span class="n">style</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;lower right&#39;</span><span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------------</span>
+
+    <span class="n">f</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">hspace</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">setup_experiment</span><span class="p">(</span><span class="n">A</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span> <span class="n">noise_std</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                            <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">experiment</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+               <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Theoretical fn&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;k-&#39;</span><span class="p">,</span>
+               <span class="n">fit_func</span><span class="o">=</span><span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span>
+
+    <span class="n">experiment</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+               <span class="n">fit_args</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;weighted&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">},</span>
+               <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Fit (y clipped to 1e-10)&#39;</span><span class="p">,</span>
+               <span class="n">style</span><span class="o">=</span><span class="s1">&#39;b--&#39;</span><span class="p">)</span>
+    
+    <span class="n">experiment</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+               <span class="n">fit_args</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;weighted&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
+               <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Fit (y &gt; 0.1)&#39;</span><span class="p">,</span>
+               <span class="n">style</span><span class="o">=</span><span class="s1">&#39;r--&#39;</span><span class="p">)</span>
+         
+    <span class="n">experiment</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+               <span class="n">fit_args</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;weighted&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+               <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Weighted&#39;</span><span class="p">,</span>
+               <span class="n">style</span><span class="o">=</span><span class="s1">&#39;g--&#39;</span><span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------------</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">setup_experiment</span><span class="p">(</span><span class="n">A</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mf">9.2</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=.</span><span class="mi">75</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span> <span class="n">noise_std</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                            <span class="n">weighted</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">experiment</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+               <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Theoretical fn&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;k-&#39;</span><span class="p">,</span>
+               <span class="n">fit_func</span><span class="o">=</span><span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">:],</span>
+               <span class="n">fit_args</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;weighted&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">})</span>
+
+    <span class="n">experiment</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+               <span class="n">fit_args</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;weighted&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+               <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Weighted&#39;</span><span class="p">,</span>
+               <span class="n">style</span><span class="o">=</span><span class="s1">&#39;g--&#39;</span><span class="p">)</span>
+
+    <span class="n">experiment</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+               <span class="n">fit_func</span><span class="o">=</span><span class="n">fit_iterative</span><span class="p">,</span>
+               <span class="n">fit_args</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;weighted&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+               <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Iterative weighted&#39;</span><span class="p">,</span>
+               <span class="n">style</span><span class="o">=</span><span class="s1">&#39;r--&#39;</span><span class="p">)</span>
+
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;lower left&#39;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="25-load-a-url-into-an-array.html" title="previous chapter">Load a URL into an array</a></li>
+      <li>Next: <a href="31-using-pronys-metho-to-fit-a-sum-of-exponentials.html" title="next chapter">Using Prony's metho to fit a sum of exponentials</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/28-fitting-a-gaussian-to-noisy-data-points.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

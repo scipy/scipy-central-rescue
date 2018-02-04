@@ -1,0 +1,552 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Adaptive sampling of 2-D functions &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pcolor-like plotting wrapper for imshow" href="55-pcolor-like-plotting-wrapper-for-imshow.html" />
+    <link rel="prev" title="Adaptive sampling of 1D functions" href="53-adaptive-sampling-of-1d-functions.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="adaptive-sampling-of-2-d-functions">
+<h1>Adaptive sampling of 2-D functions<a class="headerlink" href="#adaptive-sampling-of-2-d-functions" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> pv</p>
+<p><strong>Submitted on:</strong> 2012-11-22 09:01:05-08:00</p>
+<p>Sample a 2-D function via adaptive subdivision.</p>
+<p>The sample points are chosen by estimating the point where the
+linear and cubic interpolants based on the existing points have
+maximal disagreement. This point is then taken as the next point
+to be sampled.</p>
+<p>In practice, this sampling protocol results to sparser sampling of
+smooth regions, and denser sampling of regions where the function
+changes rapidly, which is useful if the function is expensive to
+compute.</p>
+<p>This sampling procedure is not extremely fast, so to benefit from
+it, your function needs to be slow enough to compute.</p>
+<p>The figure below shows results from sampling the function <span class="math">\(e^{-(x^2+y^2 - 3/4)^2/a^4)}\)</span> with 2000 points.
+The result from adaptive sampling is here much more accurate
+than the result found by computing the function on an uniform
+grid with the same number of points. (Although, for this simple
+function, adaptive sampling is slower.)</p>
+<img alt="../_images/sampling-2d.png" src="../_images/sampling-2d.png" />
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+
+<span class="c1"># See example at the bottom</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">interpolate</span><span class="p">,</span> <span class="n">optimize</span><span class="p">,</span> <span class="n">special</span>
+
+<span class="k">class</span> <span class="nc">AdaptiveTriSampling</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sample a 2-D function adaptively.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bounds : list of 2-tuples</span>
+<span class="sd">        A list ``[(a1, b1), (a2, b2), ...]`` containing bounds,</span>
+<span class="sd">        one per dimension.</span>
+<span class="sd">    periodic : list of bool, optional</span>
+<span class="sd">        A list of booleans describing which dimensions are periodic.</span>
+<span class="sd">        Note: this is not necessarily extremely useful option, your</span>
+<span class="sd">        mileage may vary. Default: none.</span>
+<span class="sd">    dtype : dtype, optional</span>
+<span class="sd">        Type of data from function. Default: float (real-valued)</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    sample</span>
+<span class="sd">        Add new samples obtained from a function.</span>
+<span class="sd">    add</span>
+<span class="sd">        Add a new sample point. Use in combination with `next()`.</span>
+<span class="sd">    next</span>
+<span class="sd">        Return next sampling point.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    points</span>
+<span class="sd">        Sample points so far.</span>
+<span class="sd">    values</span>
+<span class="sd">        Sampled values so far.</span>
+<span class="sd">    integral</span>
+<span class="sd">        Estimate for the N-dim integral over the bounded area,</span>
+<span class="sd">        based on an interpolant constructed from the samples.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Requires Scipy &gt;= 0.9.0.</span>
+
+<span class="sd">    The sample points are chosen by estimating the point where the</span>
+<span class="sd">    linear and cubic interpolants based on the existing points have</span>
+<span class="sd">    maximal disagreement. This point is then taken as the next point</span>
+<span class="sd">    to be sampled.</span>
+
+<span class="sd">    In practice, this sampling protocol results to sparser sampling of</span>
+<span class="sd">    smooth regions, and denser sampling of regions where the function</span>
+<span class="sd">    changes rapidly, which is useful if the function is expensive to</span>
+<span class="sd">    compute.</span>
+
+<span class="sd">    This sampling procedure is not extremely fast, so to benefit from</span>
+<span class="sd">    it, your function needs to be slow enough to compute.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    See below.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">periodic</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only 2-D sampling supported (for now)&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([(</span><span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">b</span><span class="p">))</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bounds</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">periods</span> <span class="o">=</span> <span class="p">(</span><span class="bp">None</span><span class="p">,)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">ndim</span>
+        <span class="k">if</span> <span class="n">periodic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">periodic</span><span class="p">,</span> <span class="s1">&#39;__len__&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">periodic</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">periods</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">periods</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">x</span> <span class="k">else</span> <span class="bp">None</span>
+                                <span class="k">for</span> <span class="n">b</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="n">periodic</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">periods</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Wrong number of periods&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">100</span><span class="p">],</span> <span class="n">dtype</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nstack</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stack</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">pts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">def</span> <span class="nf">_append</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                    <span class="n">pts</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">opts</span> <span class="o">=</span> <span class="n">pts</span>
+                <span class="n">pts</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">def</span> <span class="nf">_append</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">opts</span><span class="p">:</span>
+                        <span class="n">pts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span><span class="p">,))</span>
+            
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">periods</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">_append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                <span class="n">_append</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">_append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stack</span> <span class="o">=</span> <span class="n">pts</span>
+
+    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+            <span class="n">arg</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">+</span> <span class="n">a</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">arg</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_points</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">integral</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Integral over triangles, via midpoint rule&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+
+        <span class="n">tri</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="o">.</span><span class="n">tri</span>
+
+        <span class="n">center</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ndim</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">center_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="p">(</span><span class="n">center</span><span class="p">)</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">]</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">p</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:]</span> <span class="o">-</span> <span class="n">p</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="bp">None</span><span class="p">,:]</span>
+        <span class="n">vol</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="n">k</span><span class="p">,:,:])</span>
+                              <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tri</span><span class="o">.</span><span class="n">nsimplex</span><span class="p">)]))</span>
+        <span class="n">vol</span> <span class="o">/=</span> <span class="n">special</span><span class="o">.</span><span class="n">gamma</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">vol</span> <span class="o">*</span> <span class="n">center_val</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">nmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">&gt;=</span> <span class="n">nmax</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">nmax</span> <span class="o">+</span> <span class="mi">10</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_points</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">nmax</span> <span class="o">+</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_points</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">point</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_values</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stack</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fill_stack</span><span class="p">()</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">p</span>
+
+    <span class="k">def</span> <span class="nf">_fill_stack</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Deal with periodicity: extend by one period</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">per</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">periods</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">per</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">pp</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">pp</span><span class="p">[:,</span><span class="n">j</span><span class="p">]</span> <span class="o">+=</span> <span class="n">per</span>
+                <span class="n">pm</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">pm</span><span class="p">[:,</span><span class="n">j</span><span class="p">]</span> <span class="o">-=</span> <span class="n">per</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="n">pm</span><span class="p">,</span> <span class="n">pp</span><span class="p">]</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;too few points...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Interpolate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="n">ip</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">ip</span><span class="o">.</span><span class="n">tri</span>
+
+        <span class="c1"># Gradients</span>
+
+        <span class="c1"># XXX: the following line is the only line that is specific to 2D;</span>
+        <span class="c1">#      otherwise this approach will work also in N dimensions</span>
+        <span class="n">grad</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interpnd</span><span class="o">.</span><span class="n">estimate_gradients_2d_global</span><span class="p">(</span>
+            <span class="n">tri</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">]</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">grad</span><span class="p">[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">]</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">ip</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">())[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">]</span>
+
+        <span class="n">dev</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">):</span>
+            <span class="n">vest</span> <span class="o">=</span> <span class="n">v</span><span class="p">[:,</span><span class="n">j</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span> <span class="o">+</span> <span class="p">((</span><span class="n">p</span><span class="p">[:,:,:]</span> <span class="o">-</span> <span class="n">p</span><span class="p">[:,</span><span class="n">j</span><span class="p">,</span><span class="bp">None</span><span class="p">,:])</span> <span class="o">*</span> <span class="n">g</span><span class="p">[:,</span><span class="n">j</span><span class="p">,</span><span class="bp">None</span><span class="p">,:])</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">dev</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">vest</span> <span class="o">-</span> <span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">q</span> <span class="o">=</span> <span class="n">p</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:]</span> <span class="o">-</span> <span class="n">p</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="bp">None</span><span class="p">,:]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># faster specialization in 2D</span>
+            <span class="n">vol</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="c1"># faster specialization in 3D</span>
+            <span class="n">vol</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span>
+                <span class="o">+</span> <span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>
+                <span class="o">+</span> <span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+                <span class="o">+</span> <span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+                <span class="o">-</span> <span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+                <span class="o">-</span> <span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>
+                <span class="o">-</span> <span class="n">q</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">q</span><span class="p">[:,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># slow general case</span>
+            <span class="n">vol</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="n">k</span><span class="p">,:,:])</span>
+                                  <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tri</span><span class="o">.</span><span class="n">nsimplex</span><span class="p">)]))</span>
+        <span class="n">vol</span> <span class="o">/=</span> <span class="n">special</span><span class="o">.</span><span class="n">gamma</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">)</span>
+        <span class="n">dev</span> <span class="o">*=</span> <span class="n">vol</span>
+
+        <span class="c1"># Take new points</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cp</span> <span class="o">=</span> <span class="mf">0.9</span><span class="o">*</span><span class="n">dev</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            <span class="n">nstack</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nstack</span><span class="p">,</span> <span class="p">(</span><span class="n">dev</span> <span class="o">&gt;</span> <span class="n">cp</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">nstack</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">nstack</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">def</span> <span class="nf">point_exists</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+            <span class="n">eps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">ptp</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">True</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stack</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stack</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">True</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dev</span><span class="p">)):</span>
+            <span class="n">jsimplex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">dev</span><span class="p">)</span>
+
+            <span class="c1"># -- Estimate point of maximum curvature inside the simplex</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">[</span><span class="n">jsimplex</span><span class="p">]]</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">ip</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">[</span><span class="n">jsimplex</span><span class="p">]]</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">grad</span><span class="p">[</span><span class="n">tri</span><span class="o">.</span><span class="n">vertices</span><span class="p">[</span><span class="n">jsimplex</span><span class="p">]]</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">transform</span><span class="p">[</span><span class="n">jsimplex</span><span class="p">]</span>
+
+            <span class="n">point_new</span> <span class="o">=</span> <span class="n">_max_disagreement_location_in_simplex</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">transform</span><span class="p">)</span>
+
+            <span class="c1"># -- Reduce to main period</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">per</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">periods</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">per</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">point_new</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">point_new</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">%</span> <span class="n">per</span>
+
+            <span class="c1"># -- Reduce to bounds</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">):</span>
+                <span class="n">point_new</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">point_new</span><span class="p">[</span><span class="n">j</span><span class="p">]))</span>
+
+            <span class="c1"># -- Check if it is really new (also, revert to mean point optionally)</span>
+            <span class="k">if</span> <span class="n">point_exists</span><span class="p">(</span><span class="n">point_new</span><span class="p">):</span>
+                <span class="n">dev</span><span class="p">[</span><span class="n">jsimplex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Add to stack</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">point_new</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stack</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">nstack</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dev</span><span class="p">[</span><span class="n">jsimplex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">ndim</span> <span class="o">+</span> <span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">),</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">):</span>
+            <span class="n">p</span><span class="p">[:,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">n</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_max_disagreement_location_in_simplex</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">transform</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find the point of maximum disagreement between linear and quadratic model</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    points : (ndim+1, ndim)</span>
+<span class="sd">        Locations</span>
+<span class="sd">    values : (ndim+1)</span>
+<span class="sd">        Values</span>
+<span class="sd">    grad : (ndim+1, ndim)</span>
+<span class="sd">        Gradients</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Based on maximizing the disagreement between a linear and a cubic model::</span>
+
+<span class="sd">        f_1(x) = a + sum_j b_j (x_j - x_0)</span>
+<span class="sd">        f_2(x) = a + sum_j c_j (x_j - x_0) + sum_ij d_ij (x_i - x_0) (x_j - x_0)</span>
+<span class="sd">                   + sum_ijk e_ijk (x_i - x_0) (x_j - x_0) (x_k - x_0)</span>
+
+<span class="sd">        |f_1(x) - f_2(x)|^2 = max!</span>
+
+<span class="sd">    The parameter a, b are estimated from values of the function, and the</span>
+<span class="sd">    parameters c, d, e from values and gradients.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ndim</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">points</span> <span class="o">-</span> <span class="n">points</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">values</span> <span class="o">-</span> <span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># -- Least-squares fit: (i) linear model</span>
+    <span class="n">b</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">z</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># -- Least-squares fit: (ii) cubic model</span>
+
+    <span class="c1"># (ii.a) fitting function values</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="bp">None</span><span class="p">,:])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">m</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="p">)</span>
+    <span class="n">x3</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,:]</span>
+          <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">m</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="p">)</span>
+    <span class="n">lhs1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">x2</span><span class="p">,</span> <span class="n">x3</span><span class="p">]</span>
+    <span class="n">rhs1</span> <span class="o">=</span> <span class="n">z</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># (ii.b) fitting gradients</span>
+    <span class="n">d_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">ndim</span><span class="p">)[</span><span class="bp">None</span><span class="p">,:,:],</span> <span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">m</span><span class="o">*</span><span class="n">ndim</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+
+    <span class="n">o</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">ndim</span><span class="p">)</span>
+
+    <span class="n">d_d</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">o</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">]</span>
+        <span class="o">+</span>
+        <span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="n">o</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,:,</span><span class="bp">None</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">m</span><span class="o">*</span><span class="n">ndim</span><span class="p">,</span> <span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="p">)</span>
+    <span class="n">d_e</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">o</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,:]</span>
+        <span class="o">+</span>
+        <span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">o</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,:]</span>
+        <span class="o">+</span>
+        <span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">o</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,:]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">m</span><span class="o">*</span><span class="n">ndim</span><span class="p">,</span> <span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="p">)</span>
+
+    <span class="n">lhs2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">d_b</span><span class="p">,</span> <span class="n">d_d</span><span class="p">,</span> <span class="n">d_e</span><span class="p">]</span>
+    <span class="n">rhs2</span> <span class="o">=</span> <span class="n">grad</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+    <span class="c1"># (ii.c) fit it</span>
+    <span class="n">lhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">lhs1</span><span class="p">,</span> <span class="n">lhs2</span><span class="p">]</span>
+    <span class="n">rhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">rhs1</span><span class="p">,</span> <span class="n">rhs2</span><span class="p">]</span>
+    <span class="n">cd</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">lhs</span><span class="p">,</span> <span class="n">rhs</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">cd</span><span class="p">[:</span><span class="n">ndim</span><span class="p">]</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">cd</span><span class="p">[</span><span class="n">ndim</span><span class="p">:</span><span class="n">ndim</span><span class="o">+</span><span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ndim</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">cd</span><span class="p">[</span><span class="n">ndim</span><span class="o">+</span><span class="n">ndim</span><span class="o">*</span><span class="n">ndim</span><span class="p">:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ndim</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+
+    <span class="c1"># -- Find point of maximum disagreement, inside the triangle</span>
+
+    <span class="n">itr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">transform</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">itr</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="o">-</span><span class="nb">abs</span><span class="p">(((</span><span class="n">c</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span><span class="o">*</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                 <span class="o">+</span> <span class="p">(</span><span class="n">d</span><span class="o">*</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                 <span class="o">+</span> <span class="p">(</span><span class="n">e</span><span class="o">*</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">,:])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                 <span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+    <span class="n">cons</span> <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">()])]</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">):</span>
+        <span class="n">cons</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">]]))</span>
+
+    <span class="n">ps</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="n">ndim</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span> <span class="o">*</span> <span class="n">ndim</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">fmin_slsqp</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">ps</span><span class="p">,</span> <span class="n">ieqcons</span><span class="o">=</span><span class="n">cons</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                            <span class="n">bounds</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)]</span><span class="o">*</span><span class="n">ndim</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">itr</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">+</span> <span class="n">points</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">p</span>
+    
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># -- Example:</span>
+
+    <span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">pi</span><span class="p">,</span> <span class="n">exp</span><span class="p">,</span> <span class="n">sqrt</span>
+
+    <span class="n">ix</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">ix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">print</span> <span class="s2">&quot;</span><span class="si">%4d</span><span class="s2"> / 2000&quot;</span> <span class="o">%</span> <span class="n">ix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="mf">0.2</span>
+        <span class="k">return</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">y</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mf">0.75</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">a</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span>
+
+
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="n">AdaptiveTriSampling</span><span class="p">([(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">201</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">201</span><span class="p">)</span>
+
+    <span class="n">s</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">231</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;100 samples&#39;</span><span class="p">)</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">ip</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="bp">None</span><span class="p">,:])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
+
+    <span class="n">s</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="mi">400</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">232</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;500 samples&#39;</span><span class="p">)</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">ip</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="bp">None</span><span class="p">,:])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
+
+    <span class="n">s</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">233</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;1000 samples&#39;</span><span class="p">)</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">ip</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="bp">None</span><span class="p">,:])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
+
+    <span class="n">s</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">234</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;2000 samples&#39;</span><span class="p">)</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">ip</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="bp">None</span><span class="p">,:])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">235</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;2000 samples (uniform)&#39;</span><span class="p">)</span>
+    <span class="n">nx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2000</span><span class="p">))</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nx</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nx</span><span class="p">)</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">ip</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="bp">None</span><span class="p">,:])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                        <span class="n">right</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+                        <span class="n">wspace</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">hspace</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;sampling-2d.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="53-adaptive-sampling-of-1d-functions.html" title="previous chapter">Adaptive sampling of 1D functions</a></li>
+      <li>Next: <a href="55-pcolor-like-plotting-wrapper-for-imshow.html" title="next chapter">pcolor-like plotting wrapper for imshow</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/54-adaptive-sampling-of-2-d-functions.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

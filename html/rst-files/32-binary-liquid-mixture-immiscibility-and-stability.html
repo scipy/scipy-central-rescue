@@ -1,0 +1,231 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Binary Liquid Mixture Immiscibility and Stability &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Convert categorical data in a structure numpy array to boolean fields" href="35-convert-categorical-data-in-a-structure-numpy-array-to-boolean-fields.html" />
+    <link rel="prev" title="Using Prony&#39;s metho to fit a sum of exponentials" href="31-using-pronys-metho-to-fit-a-sum-of-exponentials.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="binary-liquid-mixture-immiscibility-and-stability">
+<h1>Binary Liquid Mixture Immiscibility and Stability<a class="headerlink" href="#binary-liquid-mixture-immiscibility-and-stability" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> keitho</p>
+<p><strong>Submitted on:</strong> 2011-11-19 10:17:37-08:00</p>
+<p>Determines regions of immiscibility and any limits of essential instability for a binary liquid mixture of components B and C. the excess Gibbs energy of mixing is given explicitly by an empirical equation:</p>
+<div class="math">
+\[\Delta G^{ex}/RT = x_{B}x_{C}[k_{1}+k_{2}(x_{B}-x_{C})+k_{3}(x_{B}-x_{C})^2]\]</div>
+<p>where <span class="math">\(x_{B}+x_{C} = 1\)</span></p>
+<p>The essential one-phase instability is between the orange points (spinodal points).
+The region of immiscibility is between the red points (binodal points).
+Blue points show the minima, which are not equal to the binodal points.</p>
+<img alt="../_images/plot3.png" src="../_images/plot3.png" />
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+<span class="c1">#Determines regions of immiscibility and any limits of essential instability </span>
+<span class="c1">#for a binary liquid mixture of components B and C. the excess Gibbs energy of </span>
+<span class="c1">#mixing is given explicitly by an empirical equation: </span>
+<span class="c1">#deltaGex/RT = xBxC[k1+k2(xB-xC)+k3(xB-xC)^2] where xB+xC=1</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">matplotlib.pylab</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># These are the functions called by the bisection method</span>
+<span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">id</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">6</span> <span class="o">*</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">3</span><span class="p">)</span> <span class="o">+</span> <span class="n">k3</span> <span class="o">*</span> <span class="p">(</span><span class="mi">24</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">24</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">5</span><span class="p">))</span> 
+                <span class="o">+</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">id</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k1</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">6</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">k3</span> <span class="o">*</span> 
+                <span class="p">(</span> <span class="o">-</span><span class="mi">16</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">24</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">log</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">id</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">dummys</span> <span class="o">-</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k1</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">6</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> 
+                          <span class="n">k3</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">16</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">24</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> 
+                          <span class="n">log</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">)))</span>
+
+<span class="c1">#This function is to calculate values for the y-axis on the figure</span>
+<span class="k">def</span> <span class="nf">g</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">))</span> <span class="o">+</span> <span class="n">k3</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> 
+            <span class="n">x</span> <span class="o">*</span> <span class="n">log</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">))</span>
+
+<span class="c1">#The incremental search method is used to start off the bisection method    </span>
+<span class="k">def</span> <span class="nf">incremental</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="n">xf</span><span class="p">,</span><span class="nb">id</span><span class="p">):</span>
+    <span class="n">dx</span> <span class="o">=</span> <span class="p">(</span><span class="n">xf</span> <span class="o">-</span> <span class="n">x0</span><span class="p">)</span> <span class="o">/</span> <span class="mi">998</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">998</span><span class="p">):</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+        <span class="n">y2</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">dx</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y1</span> <span class="o">*</span> <span class="n">y2</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+                <span class="n">y1</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x0</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="n">dx</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+                <span class="n">y2</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x0</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">dx</span><span class="o">/</span><span class="mi">10</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">y1</span> <span class="o">*</span> <span class="n">y2</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">x1</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">j</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">/</span> <span class="mi">10</span>
+                    <span class="n">x2</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">/</span> <span class="mi">10</span>
+                    <span class="n">y1</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+                    <span class="n">y2</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x2</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span>
+                
+<span class="c1"># Bisection method used to solve for non-linear equation</span>
+<span class="k">def</span> <span class="nf">bisec</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="n">xf</span><span class="p">,</span><span class="nb">id</span><span class="p">):</span>
+    <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">incremental</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="n">xf</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">e</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+        <span class="n">x3</span> <span class="o">=</span> <span class="p">(</span><span class="n">x1</span> <span class="o">+</span> <span class="n">x2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">y3</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x3</span><span class="p">,</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y1</span> <span class="o">*</span> <span class="n">y3</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">x2</span> <span class="o">=</span> <span class="n">x3</span>
+            <span class="n">y2</span> <span class="o">=</span> <span class="n">y3</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x1</span> <span class="o">=</span> <span class="n">x3</span>
+            <span class="n">y1</span> <span class="o">=</span> <span class="n">y3</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">x1</span> <span class="o">/</span> <span class="n">x2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">x2</span>
+
+<span class="c1"># Constants</span>
+<span class="n">k1</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">k2</span> <span class="o">=</span> <span class="mf">0.2</span>
+<span class="n">k3</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.8</span>
+
+<span class="c1">#Set up vectors of composition values</span>
+<span class="n">xB</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span><span class="mf">0.999</span><span class="p">,</span><span class="mi">101</span><span class="p">)</span>
+<span class="n">xC</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">xB</span>
+
+<span class="c1">#This is deltaG/RT calculated from the excess Gibbs given at top</span>
+<span class="n">deltaGoverRT</span> <span class="o">=</span> <span class="p">(</span><span class="n">xB</span> <span class="o">*</span> <span class="n">xC</span> <span class="o">*</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">*</span> <span class="p">(</span><span class="n">xB</span> <span class="o">-</span> <span class="n">xC</span><span class="p">)</span> <span class="o">+</span> <span class="n">k3</span> <span class="o">*</span> <span class="p">(</span><span class="n">xB</span> <span class="o">-</span> <span class="n">xC</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> 
+                <span class="n">xB</span> <span class="o">*</span> <span class="n">log</span><span class="p">(</span><span class="n">xB</span><span class="p">)</span> <span class="o">+</span> <span class="n">xC</span> <span class="o">*</span> <span class="n">log</span><span class="p">(</span><span class="n">xC</span><span class="p">))</span>
+<span class="c1">#First and second derivative of deltaG/RT</span>
+<span class="n">derivative</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k1</span> <span class="o">*</span> <span class="n">xB</span> <span class="o">+</span> <span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">6</span> <span class="o">*</span> <span class="n">xB</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">xB</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">k3</span> <span class="o">*</span> 
+              <span class="p">(</span><span class="o">-</span><span class="mi">16</span> <span class="o">*</span> <span class="n">xB</span><span class="o">**</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">24</span> <span class="o">*</span> <span class="n">xB</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">xB</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">log</span><span class="p">(</span><span class="n">xB</span><span class="p">)</span> <span class="o">-</span> <span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">xB</span><span class="p">))</span>
+<span class="n">derivative2</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">6</span> <span class="o">*</span> <span class="n">xB</span> <span class="o">-</span> <span class="mi">3</span><span class="p">)</span> <span class="o">+</span> <span class="n">k3</span> <span class="o">*</span> <span class="p">(</span><span class="mi">24</span> <span class="o">*</span> <span class="n">xB</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">24</span> <span class="o">*</span> <span class="n">xB</span> <span class="o">+</span> <span class="mi">5</span><span class="p">))</span> 
+               <span class="o">+</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">xB</span> <span class="o">-</span> <span class="n">xB</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+<span class="c1">#find spinodal points for instability region using bisection method</span>
+<span class="n">xspin1</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">xspin2</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="n">xspin1</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="c1">#initial guess at binodal points at minima of function</span>
+<span class="n">xB1</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">xB2</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="n">xB1</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">xB3</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="n">xB2</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="n">xBa</span> <span class="o">=</span> <span class="n">xB1</span>
+<span class="n">xBb</span> <span class="o">=</span> <span class="n">xB3</span>
+
+<span class="c1">#Solve for binodal points using bisection method</span>
+<span class="n">converged</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="k">while</span> <span class="ow">not</span> <span class="n">converged</span><span class="p">:</span>
+    <span class="n">dummys</span> <span class="o">=</span> <span class="p">(</span><span class="n">g</span><span class="p">(</span><span class="n">xBb</span><span class="p">)</span> <span class="o">-</span> <span class="n">g</span><span class="p">(</span><span class="n">xBa</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">xBb</span> <span class="o">-</span> <span class="n">xBa</span><span class="p">)</span>      <span class="c1">#dummy slope</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">dummys</span> <span class="o">/</span> <span class="n">f</span><span class="p">(</span><span class="n">xBb</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">e</span> <span class="o">&lt;</span> <span class="mf">1e-4</span><span class="p">:</span>
+        <span class="n">converged</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">xBa</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">xBu</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="n">xBa</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">xBb</span> <span class="o">=</span> <span class="n">bisec</span><span class="p">(</span><span class="n">xBu</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    
+<span class="n">yint</span> <span class="o">=</span> <span class="n">g</span><span class="p">(</span><span class="n">xBa</span><span class="p">)</span> <span class="o">-</span> <span class="n">dummys</span> <span class="o">*</span> <span class="n">xBa</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">yint</span> <span class="o">+</span> <span class="n">dummys</span> <span class="o">*</span> <span class="n">xB</span>
+
+<span class="n">figure</span><span class="p">()</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xB</span><span class="p">,</span> <span class="n">deltaGoverRT</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xB</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xB1</span><span class="p">,</span> <span class="n">g</span><span class="p">(</span><span class="n">xB1</span><span class="p">),</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xB3</span><span class="p">,</span> <span class="n">g</span><span class="p">(</span><span class="n">xB3</span><span class="p">),</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xBa</span><span class="p">,</span> <span class="n">g</span><span class="p">(</span><span class="n">xBa</span><span class="p">),</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xBb</span><span class="p">,</span> <span class="n">g</span><span class="p">(</span><span class="n">xBb</span><span class="p">),</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xspin1</span><span class="p">,</span> <span class="n">g</span><span class="p">(</span><span class="n">xspin1</span><span class="p">),</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">xspin2</span><span class="p">,</span> <span class="n">g</span><span class="p">(</span><span class="n">xspin2</span><span class="p">),</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">grid</span><span class="p">(</span><span class="s1">&#39;on&#39;</span><span class="p">)</span>
+<span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39; xB &#39;</span><span class="p">)</span>
+<span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39; deltaG/RT &#39;</span><span class="p">)</span>
+<span class="n">title</span><span class="p">(</span><span class="s1">&#39;DeltaG/RT vs xB&#39;</span><span class="p">)</span>
+<span class="n">show</span><span class="p">()</span>
+
+<span class="k">print</span> <span class="s1">&#39;There is one-phase instability between xB = &#39;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">xspin1</span><span class="p">,</span> 
+<span class="s1">&#39;and xB = &#39;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">xspin2</span>
+<span class="k">print</span> <span class="s1">&#39;(Orange points on figure, &quot;spinodal points&quot;)&#39;</span>
+<span class="k">print</span> <span class="s1">&#39;The region of immiscibility is between xB = &#39;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">xBa</span><span class="p">,</span> 
+<span class="s1">&#39;and xB = &#39;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">xBb</span>
+<span class="k">print</span> <span class="s1">&#39;(Red points on figure, &quot;binodal points&quot;)&#39;</span>
+<span class="k">print</span> <span class="s1">&#39;Blue points on fig show minima, which do not equal to the binodal points&#39;</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="31-using-pronys-metho-to-fit-a-sum-of-exponentials.html" title="previous chapter">Using Prony's metho to fit a sum of exponentials</a></li>
+      <li>Next: <a href="35-convert-categorical-data-in-a-structure-numpy-array-to-boolean-fields.html" title="next chapter">Convert categorical data in a structure numpy array to boolean fields</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/32-binary-liquid-mixture-immiscibility-and-stability.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

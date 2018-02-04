@@ -1,0 +1,210 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Error estimates for fit parameters resulting from least-squares fits using bootstrap resampling &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Generating confidence intervals via model comparsion." href="37-generating-confidence-intervals-via-model-comparsion.html" />
+    <link rel="prev" title="Convert categorical data in a structure numpy array to boolean fields" href="35-convert-categorical-data-in-a-structure-numpy-array-to-boolean-fields.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="error-estimates-for-fit-parameters-resulting-from-least-squares-fits-using-bootstrap-resampling">
+<h1>Error estimates for fit parameters resulting from least-squares fits using bootstrap resampling<a class="headerlink" href="#error-estimates-for-fit-parameters-resulting-from-least-squares-fits-using-bootstrap-resampling" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> vilo</p>
+<p><strong>Submitted on:</strong> 2012-03-21 02:46:49-07:00</p>
+<p>The function <code class="docutils literal"><span class="pre">scipy.optimize.leastsq</span></code> does not yield error estimates for fitted parameters.
+As a remedy one might use bootstrap resampling of the underlying data in order to obtain
+error estimates for the parameters employed in the fit.</p>
+<p>The above code snippet illustrates this for synthetic data. In the main function, a number
+of N random variates from a standard normal distribution are generated, comprising the
+raw data to be processed further. The function <code class="docutils literal"><span class="pre">myFit</span></code> first computes an approximate
+probability density function that approximates the raw data and determines a best fit
+to a Gaussian fit function using scipy's least-squares routine.
+In the main function, the objective function is defined to return the standard deviation of
+the above fit function.
+An error estimate for the parameter singled out by the objective function is obtained using
+bootstrap resampling. An extensive resamling using a number of 5000 bootstrap data
+sets yields the figure below.  It illustrates the distribution of the resampled estimates of
+the standerd deviation and shows the corresponding error estimate obtained using bootstrap
+resampling. The numerical value of the standard deviation reads 0.996 +/- 0.011, which is
+in good agreement with the parameters used to generate the raw data.</p>
+<img alt="../_images/pdf_sigma_leastsq.png" src="../_images/pdf_sigma_leastsq.png" />
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0 </span>
+<span class="c1"># \file    scipy_lsFit.py</span>
+<span class="c1"># \brief  error estimates for fit parameters using</span>
+<span class="c1">#            bootstrap resampling</span>
+<span class="c1">#          </span>
+<span class="c1"># scipy.optimize.leastsq does not yield error </span>
+<span class="c1"># estimates for fit-parameters. As a remedy,</span>
+<span class="c1"># one might use bootstrap resampling to get an</span>
+<span class="c1"># impression of the respective errors</span>
+<span class="c1">#</span>
+<span class="c1"># \author vilo</span>
+<span class="c1"># \date    19.03.2012</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+<span class="kn">import</span> <span class="nn">scipy.stats</span>
+<span class="kn">import</span> <span class="nn">scipy.optimize</span>
+
+<span class="k">def</span> <span class="nf">myFit</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">nBins</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Fit parametric function to data.</span>
+
+<span class="sd">        computes best fit of a fit-function to a the pdf of</span>
+<span class="sd">        the input data using the method of least-squares.</span>
+<span class="sd">        For the definition of the objective function the </span>
+<span class="sd">        vertical differences between the observed data</span>
+<span class="sd">        and the fit-function is used.</span>
+
+<span class="sd">        Input:</span>
+<span class="sd">        data    -- list of values for resampling procedure</span>
+<span class="sd">        nBin    -- number of bins for the frequency histogram</span>
+
+<span class="sd">        Returns: (s)</span>
+<span class="sd">        s       -- resulting fit-parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># data binning to yield frequency histogram</span>
+        <span class="n">freqObs</span><span class="p">,</span><span class="n">xMin</span><span class="p">,</span><span class="n">dx</span><span class="p">,</span><span class="n">nOut</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">nBins</span><span class="p">)</span>
+
+        <span class="c1"># prepare observed x,y-values, i.e. bin centers and</span>
+        <span class="c1"># probability densities, respectively</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">xVals</span> <span class="o">=</span> <span class="p">[</span><span class="n">xMin</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">dx</span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nBins</span><span class="p">)]</span>
+        <span class="n">yVals</span> <span class="o">=</span> <span class="p">[</span><span class="n">freqObs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">N</span><span class="o">*</span><span class="n">dx</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nBins</span><span class="p">)]</span>
+        
+        <span class="c1"># define objective function as the vertical difference</span>
+        <span class="c1"># between the observed data and the fit-function</span>
+        <span class="n">fitFunc</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span><span class="n">x</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">scale</span><span class="o">=</span><span class="n">s</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">objFunc</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">,</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="p">(</span><span class="n">fitFunc</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">x</span><span class="p">)</span><span class="o">-</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="c1"># set initial guess for the fit-parameters and perform</span>
+        <span class="c1"># least squares fit</span>
+        <span class="n">s0</span><span class="o">=</span><span class="p">[</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">]</span>
+        <span class="n">s</span><span class="p">,</span><span class="n">flag</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">optimize</span><span class="o">.</span><span class="n">leastsq</span><span class="p">(</span><span class="n">objFunc</span><span class="p">,</span><span class="n">s0</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">xVals</span><span class="p">,</span><span class="n">yVals</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">s</span>
+
+<span class="k">def</span> <span class="nf">bootstrap</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">objFunc</span><span class="p">,</span><span class="n">nBootSamp</span><span class="o">=</span><span class="mi">128</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Empirical bootstrap resampling of data.</span>
+
+<span class="sd">        estimates value of function &#39;objFunc&#39; from original data </span>
+<span class="sd">        stored in list &#39;data&#39;. Calculates corresponding error as </span>
+<span class="sd">        standard deviation of the &#39;nBootSamp&#39; resampled bootstrap </span>
+<span class="sd">        data sets.</span>
+
+<span class="sd">        Input:</span>
+<span class="sd">        data        -- list of values for resampling procedure</span>
+<span class="sd">        objFunc     -- estimator function for resampling procedure</span>
+<span class="sd">        nBootSamp   -- number of bootstrap samples (default 128)</span>
+
+<span class="sd">        Returns: (av,sDev)</span>
+<span class="sd">        origEstim   -- value of estimFunc for original data</span>
+<span class="sd">        resError    -- corresponding error estimated via resampling</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">N</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">objFuncVals</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nBootSamp</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nBootSamp</span><span class="p">):</span>
+                <span class="n">resDat</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">scipy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">N</span><span class="p">,(</span><span class="n">N</span><span class="p">,))]</span>
+                <span class="n">objFuncVals</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">objFunc</span><span class="p">(</span><span class="n">resDat</span><span class="p">)</span>
+        <span class="n">av</span>   <span class="o">=</span> <span class="n">objFunc</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> 
+        <span class="c1"># scipy.std is computed from the uncorrected variance of the </span>
+        <span class="c1"># data. Apply correction factor to account for bias.</span>
+        <span class="n">sDev</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">nBootSamp</span><span class="o">/</span><span class="p">(</span><span class="n">nBootSamp</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span><span class="o">*</span><span class="n">scipy</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">objFuncVals</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">av</span><span class="p">,</span><span class="n">sDev</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+
+        <span class="n">N</span>     <span class="o">=</span> <span class="mi">10000</span>   <span class="c1"># number of random variates</span>
+        <span class="n">nBoot</span> <span class="o">=</span> <span class="mi">500</span>    <span class="c1"># number of bootstrap samples </span>
+
+        <span class="n">rawData</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+
+        <span class="n">objFunc</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">myFit</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">av</span><span class="p">,</span><span class="n">sDev_boot</span> <span class="o">=</span> <span class="n">bootstrap</span><span class="p">(</span><span class="n">rawData</span><span class="p">,</span><span class="n">objFunc</span><span class="p">,</span><span class="n">nBoot</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s1">&#39;sigma = </span><span class="si">%lf</span><span class="s1"> +/- </span><span class="si">%lf</span><span class="s1">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">av</span><span class="p">,</span><span class="n">sDev_boot</span><span class="p">)</span>
+
+<span class="n">main</span><span class="p">()</span>
+<span class="c1"># EOF: scipy_lsFit.py</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="35-convert-categorical-data-in-a-structure-numpy-array-to-boolean-fields.html" title="previous chapter">Convert categorical data in a structure numpy array to boolean fields</a></li>
+      <li>Next: <a href="37-generating-confidence-intervals-via-model-comparsion.html" title="next chapter">Generating confidence intervals via model comparsion.</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/36-error-estimates-for-fit-parameters-resulting-from-least-squares-fits-using-bootstrap-resampling.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

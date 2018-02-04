@@ -1,0 +1,257 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Circumscribed Circle (CSC) for N randomly located 2-D points &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Savitzky-Golay Filter" href="49-savitzky-golay-filter.html" />
+    <link rel="prev" title="single input pole placement" href="41-single-input-pole-placement.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="circumscribed-circle-csc-for-n-randomly-located-2-d-points">
+<h1>Circumscribed Circle (CSC) for N randomly located 2-D points<a class="headerlink" href="#circumscribed-circle-csc-for-n-randomly-located-2-d-points" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> g_kalman</p>
+<p><strong>Submitted on:</strong> 2012-10-30 10:47:31-07:00</p>
+<p>Calculates and displays Circumscribed Circle (CSC). Select N randomly located 2-D points. Display via Tkinter on Canvas N points. Find location of center (from NESW max positions).
+Radius of CSC wrt center is max distance between center and any of the random points.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+<span class="c1"># similar to: http://www.scipy.org/Cookbook/Finding_Convex_Hull</span>
+<span class="c1">#***********************</span>
+<span class="c1">#Nomenclature:</span>
+<span class="c1">#-------------</span>
+<span class="c1">#CSC=CircumScribedCircle</span>
+<span class="c1">#BBox=BoundingBox</span>
+
+<span class="c1">#see UNIT TEST (below)</span>
+<span class="c1">#***********************</span>
+
+<span class="kn">from</span> <span class="nn">Tkinter</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<span class="c1">#deg2rad:</span>
+<span class="n">dr</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mf">180.0</span>
+<span class="c1">#==========================================================</span>
+<span class="k">def</span> <span class="nf">get_MinMax</span><span class="p">(</span><span class="n">pList</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    called by: get_CSC(...)</span>
+<span class="sd">    input: pList--&gt; list of N randomly located points as xy-tuples</span>
+<span class="sd">    returns: list of tuples for xmin,ymin,xmax,ymax extracted from pList</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">N</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">pList</span><span class="p">)</span>
+    <span class="n">minX</span><span class="o">=</span><span class="mi">999</span>
+    <span class="n">minY</span><span class="o">=</span><span class="mi">999</span>
+    <span class="n">maxX</span><span class="o">=-</span><span class="mi">999</span>
+    <span class="n">maxY</span><span class="o">=-</span><span class="mi">999</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">pList</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">&lt;=</span><span class="n">minX</span><span class="p">:</span>
+            <span class="n">minX</span><span class="o">=</span><span class="n">x</span>
+            <span class="n">minX_Point</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y</span><span class="o">&lt;=</span><span class="n">minY</span><span class="p">:</span>
+            <span class="n">minY</span><span class="o">=</span><span class="n">y</span>
+            <span class="n">minY_Point</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">&gt;=</span><span class="n">maxX</span><span class="p">:</span>
+            <span class="n">maxX</span><span class="o">=</span><span class="n">x</span>
+            <span class="n">maxX_Point</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y</span><span class="o">&gt;=</span><span class="n">maxY</span><span class="p">:</span>
+            <span class="n">maxY</span><span class="o">=</span><span class="n">y</span>
+            <span class="n">maxY_Point</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">minX_Point</span><span class="p">,</span><span class="n">minY_Point</span><span class="p">,</span><span class="n">maxX_Point</span><span class="p">,</span><span class="n">maxY_Point</span><span class="p">]</span>
+<span class="c1">#---------------------------------------------------</span>
+<span class="k">def</span> <span class="nf">get_CSC_Ctr</span><span class="p">(</span><span class="n">MinMax_Points</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    called by: get_CSC(...)</span>
+<span class="sd">    input: list of tuples for xmin,ymin,xmax,ymax (extracted from pList)</span>
+<span class="sd">    returns: center (tuple) for CSC</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">xMin</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x</span><span class="p">,</span><span class="n">yMin</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">xMax</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">x</span><span class="p">,</span><span class="n">yMax</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="n">xCtr</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">xMin</span><span class="o">+</span><span class="n">xMax</span><span class="p">)</span>
+    <span class="n">yCtr</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">yMin</span><span class="o">+</span><span class="n">yMax</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">xCtr</span><span class="p">,</span><span class="n">yCtr</span><span class="p">)</span>
+<span class="c1">#-------------------------------------------------------</span>
+<span class="k">def</span> <span class="nf">get_CSC_R</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">,</span><span class="n">MinMax_Points</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    called by: get_CSC(...)</span>
+<span class="sd">    input: tuple for CSC&#39;s center  &amp; tuples for xmin,ymin,xmax,ymax</span>
+<span class="sd">    returns: max distance associated with xmin,ymin,xmax,ymax</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Rmax</span><span class="o">=-</span><span class="mi">999</span>
+    <span class="n">xmin</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">R</span><span class="o">=</span><span class="n">dist</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">xmin</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">R</span><span class="o">&gt;=</span><span class="n">Rmax</span><span class="p">:</span> <span class="n">Rmax</span><span class="o">=</span><span class="n">R</span>
+
+    <span class="n">x</span><span class="p">,</span><span class="n">yMin</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">R</span><span class="o">=</span><span class="n">dist</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">x</span><span class="p">,</span><span class="n">yMin</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">R</span><span class="o">&gt;=</span><span class="n">Rmax</span><span class="p">:</span> <span class="n">Rmax</span><span class="o">=</span><span class="n">R</span>
+
+    <span class="n">xMax</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">R</span><span class="o">=</span><span class="n">dist</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">xMax</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">R</span><span class="o">&gt;=</span><span class="n">Rmax</span><span class="p">:</span> <span class="n">Rmax</span><span class="o">=</span><span class="n">R</span>
+
+    <span class="n">x</span><span class="p">,</span><span class="n">yMax</span><span class="o">=</span><span class="n">MinMax_Points</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">R</span><span class="o">=</span><span class="n">dist</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">x</span><span class="p">,</span><span class="n">yMax</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">R</span><span class="o">&gt;=</span><span class="n">Rmax</span><span class="p">:</span> <span class="n">Rmax</span><span class="o">=</span><span class="n">R</span>
+
+    <span class="k">return</span> <span class="n">Rmax</span>
+<span class="c1">#--------------------------------------</span>
+<span class="k">def</span> <span class="nf">get_CSC_BBox</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">,</span><span class="n">R</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    returns BBoxcoords for CSC</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x1</span><span class="o">=</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">R</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">180.0</span><span class="o">*</span><span class="n">dr</span><span class="p">)</span>
+    <span class="n">y1</span><span class="o">=</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">R</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="o">-</span><span class="mf">90.0</span><span class="o">*</span><span class="n">dr</span><span class="p">)</span>
+    <span class="n">x2</span><span class="o">=</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">R</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">0.0</span><span class="o">*</span><span class="n">dr</span><span class="p">)</span>
+    <span class="n">y2</span><span class="o">=</span><span class="n">CSC_Ctr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">R</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">90.0</span><span class="o">*</span><span class="n">dr</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">x1</span><span class="p">,</span><span class="n">y1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">y2</span><span class="p">]</span>
+<span class="c1">#--------------------------------------</span>
+<span class="k">def</span> <span class="nf">get_CSC</span><span class="p">(</span><span class="n">pList</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    this function is called by MAIN</span>
+<span class="sd">    returns: cooords (list) for CSC, displayed by MAIN</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">MinMax_Points</span><span class="o">=</span><span class="n">get_MinMax</span><span class="p">(</span><span class="n">pList</span><span class="p">)</span>
+    <span class="n">CSC_Ctr</span><span class="o">=</span><span class="n">get_CSC_Ctr</span><span class="p">(</span><span class="n">MinMax_Points</span><span class="p">)</span>
+    <span class="n">R</span><span class="o">=</span><span class="n">get_CSC_R</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">,</span><span class="n">MinMax_Points</span><span class="p">)</span>
+    <span class="n">coords</span><span class="o">=</span><span class="n">get_CSC_BBox</span><span class="p">(</span><span class="n">CSC_Ctr</span><span class="p">,</span><span class="n">R</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">coords</span>
+<span class="c1">#===================================================</span>
+<span class="k">def</span> <span class="nf">dist</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">y1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">y2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;distance between two points &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">((</span><span class="n">x1</span><span class="o">-</span><span class="n">x2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="p">(</span><span class="n">y1</span><span class="o">-</span><span class="n">y2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+<span class="c1">#=================== MAIN: UNIT TEST ===========================</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    display on a canvas the CSC for N randomly located oints</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">root</span><span class="o">=</span><span class="n">Tk</span><span class="p">()</span>
+
+    <span class="c1">#create a 200x2000 Canvas</span>
+    <span class="n">w</span><span class="o">=</span><span class="mi">200</span>
+    <span class="n">h</span><span class="o">=</span><span class="mi">200</span>
+    <span class="n">cv</span><span class="o">=</span><span class="n">Canvas</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="n">width</span><span class="o">=</span><span class="n">w</span><span class="p">,</span><span class="n">height</span><span class="o">=</span><span class="n">w</span><span class="p">,</span><span class="n">bg</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">)</span>
+    <span class="n">cv</span><span class="o">.</span><span class="n">pack</span><span class="p">()</span>
+
+    <span class="c1">#create a list of N random points within a circular area</span>
+
+    <span class="n">N</span><span class="o">=</span><span class="mi">60</span>
+    <span class="n">pList</span><span class="o">=</span><span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="c1">#circular area:</span>
+        <span class="n">R</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">int</span><span class="p">(</span><span class="mf">0.25</span><span class="o">*</span><span class="n">w</span><span class="p">))</span>
+        <span class="n">a</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">360</span><span class="p">)</span>
+        <span class="n">xR</span><span class="o">=</span><span class="n">R</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">a</span><span class="o">*</span><span class="n">dr</span><span class="p">)</span>
+        <span class="n">yR</span><span class="o">=</span><span class="n">R</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">a</span><span class="o">*</span><span class="n">dr</span><span class="p">)</span>
+        <span class="c1">#shift wrt ctr 0.5*(w,h):</span>
+        <span class="n">x</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="n">w</span><span class="o">+</span><span class="n">xR</span>
+        <span class="n">y</span><span class="o">=</span><span class="mf">0.5</span><span class="o">*</span><span class="n">h</span><span class="o">+</span><span class="n">yR</span>
+
+        <span class="c1">#display:</span>
+        <span class="n">coord</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span><span class="n">x</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">+</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">cv</span><span class="o">.</span><span class="n">create_oval</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span><span class="n">fill</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+
+        <span class="n">pList</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">))</span>
+
+    <span class="c1">#**********************************************</span>
+    <span class="c1">#Note:</span>
+    <span class="c1">#pList could also be read from an external file</span>
+    <span class="c1">#**********************************************</span>
+
+    <span class="n">coords</span><span class="o">=</span><span class="n">get_CSC</span><span class="p">(</span><span class="n">pList</span><span class="p">)</span>
+    <span class="n">cv</span><span class="o">.</span><span class="n">create_oval</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span><span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">outline</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+
+    <span class="n">root</span><span class="o">.</span><span class="n">mainloop</span><span class="p">()</span>
+
+
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="41-single-input-pole-placement.html" title="previous chapter">single input pole placement</a></li>
+      <li>Next: <a href="49-savitzky-golay-filter.html" title="next chapter">Savitzky-Golay Filter</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/48-circumscribed-circle-csc-for-n-randomly-located-2-d-points.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,269 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Generating confidence intervals via model comparsion. &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ROC curve demo" href="38-roc-curve-demo.html" />
+    <link rel="prev" title="Error estimates for fit parameters resulting from least-squares fits using bootstrap resampling" href="36-error-estimates-for-fit-parameters-resulting-from-least-squares-fits-using-bootstrap-resampling.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="generating-confidence-intervals-via-model-comparsion">
+<h1>Generating confidence intervals via model comparsion.<a class="headerlink" href="#generating-confidence-intervals-via-model-comparsion" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> tillsten</p>
+<p><strong>Submitted on:</strong> 2012-03-24 18:24:24-07:00</p>
+<p>Using leastsq to fit data it is possible to calculate an estimation of error using the
+diagonal of covariance matrix.
+This has some drawbacks, especially if there is a strong dependency between the parameters. This snippet
+presents another method of calculating a confidence interval using the fisher statistic of the chi^2 values.</p>
+<p>For a longer description see:
+&lt;<a class="reference external" href="http://www.hearne.co.nz/attachments/RegressionBook.pdf">http://www.hearne.co.nz/attachments/RegressionBook.pdf</a>&gt;
+Chapter 18.</p>
+<p>The method is used and compared on a simple linear model.
+Below the results is shown. The thick line in the probability plots are the error ranges calculated from the covariance matrix. It is clearly underestimating the possible error.</p>
+<img alt="../_images/chi_sq_lin.png" src="../_images/chi_sq_lin.png" />
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">leastsq</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">f</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+<span class="k">def</span> <span class="nf">fix_para</span><span class="p">(</span><span class="n">fit_func</span><span class="p">,</span><span class="n">idx</span><span class="p">,</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a function, an index and a value it returns a </span>
+<span class="sd">    function without the parameter and idx and fixes the </span>
+<span class="sd">    missing parameter the val.</span>
+<span class="sd">    So it is a functools.partial for list-taking functions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">fixed_func</span><span class="p">(</span><span class="n">a</span><span class="p">):</span> 
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">a</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">a</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>                
+        <span class="n">a</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span><span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fit_func</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fixed_func</span>
+
+<span class="k">def</span> <span class="nf">sumsq</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Squares and sums an array&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    
+<span class="k">def</span> <span class="nf">f_compare</span><span class="p">(</span><span class="n">fit_func</span><span class="p">,</span><span class="n">para</span><span class="p">,</span><span class="n">best_chi</span><span class="p">,</span><span class="n">num_points</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns the probability for two given parameter sets&quot;&quot;&quot;</span>            
+    <span class="n">P</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">para</span><span class="p">)</span>
+    <span class="n">N</span><span class="o">=</span><span class="p">(</span><span class="n">num_points</span><span class="o">-</span><span class="n">P</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">cdf</span><span class="p">((</span><span class="n">N</span><span class="o">-</span><span class="n">P</span><span class="p">)</span><span class="o">/</span><span class="n">P</span><span class="o">*</span><span class="p">(</span><span class="n">sumsq</span><span class="p">(</span><span class="n">fit_func</span><span class="p">(</span><span class="n">para</span><span class="p">))</span><span class="o">-</span><span class="n">best_chi</span><span class="p">)</span><span class="o">/</span><span class="n">best_chi</span><span class="p">,</span><span class="n">P</span><span class="p">,</span><span class="n">N</span><span class="o">-</span><span class="n">P</span><span class="p">)</span>
+
+    
+<span class="k">def</span> <span class="nf">chi_search</span><span class="p">(</span><span class="n">fit_func</span><span class="p">,</span><span class="n">best</span><span class="p">,</span><span class="n">step_frac</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span><span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>  
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For given function and found optimum the function calculates</span>
+<span class="sd">    confidence intervals for every parameter via model</span>
+<span class="sd">    comparison. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+      
+    <span class="n">best_res</span><span class="o">=</span><span class="n">fit_func</span><span class="p">(</span><span class="n">best</span><span class="p">)</span>    
+    <span class="n">S0</span><span class="o">=</span><span class="n">sumsq</span><span class="p">(</span><span class="n">best_res</span><span class="p">)</span>
+    <span class="n">local_f_compare</span><span class="o">=</span><span class="k">lambda</span> <span class="n">para</span><span class="p">:</span> <span class="n">f_compare</span><span class="p">(</span><span class="n">fit_func</span><span class="p">,</span> <span class="n">para</span><span class="p">,</span> <span class="n">S0</span><span class="p">,</span> <span class="n">best_res</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>        
+    <span class="n">list_of_arrays</span><span class="o">=</span><span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">best</span><span class="p">)):</span>             
+
+        <span class="n">hist</span><span class="o">=</span><span class="p">[]</span>
+        <span class="n">x0</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">best</span><span class="p">)</span>
+        <span class="n">val</span><span class="o">=</span><span class="n">x0</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">org_val</span><span class="o">=</span><span class="n">val</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">step</span><span class="o">=</span><span class="n">val</span><span class="o">*</span><span class="n">step_frac</span>
+        <span class="n">ret</span><span class="o">=</span><span class="mi">0</span>                        
+        <span class="n">hist</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">val</span><span class="p">,</span><span class="n">ret</span><span class="p">]</span><span class="o">+</span><span class="nb">list</span><span class="p">(</span><span class="n">best</span><span class="p">))</span>            
+
+        <span class="k">def</span> <span class="nf">do_step</span><span class="p">(</span><span class="n">x0</span><span class="p">):</span>
+            <span class="n">fixed_func</span><span class="o">=</span><span class="n">fix_para</span><span class="p">(</span><span class="n">fit_func</span><span class="p">,</span><span class="n">i</span><span class="p">,</span><span class="n">val</span><span class="p">)</span>
+            <span class="n">new_para</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">leastsq</span><span class="p">(</span><span class="n">fixed_func</span><span class="p">,</span><span class="n">x0</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>            
+            <span class="n">x0_new</span><span class="o">=</span><span class="n">new_para</span><span class="p">[:]</span>
+            <span class="n">new_para</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">val</span><span class="p">)</span>        
+            <span class="n">ret</span><span class="o">=</span><span class="n">local_f_compare</span><span class="p">(</span><span class="n">new_para</span><span class="p">)</span>
+            <span class="n">hist</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">val</span><span class="p">,</span><span class="n">ret</span><span class="p">]</span><span class="o">+</span><span class="n">new_para</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ret</span><span class="p">,</span> <span class="n">x0_new</span>
+        
+        <span class="n">iteration</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">while</span> <span class="n">ret</span><span class="o">&lt;</span><span class="mf">0.99</span> <span class="ow">and</span> <span class="n">iteration</span><span class="o">&lt;</span><span class="n">max_iter</span><span class="p">:</span>                    
+            <span class="n">val</span><span class="o">+=</span><span class="n">step</span>   
+            <span class="n">ret</span><span class="p">,</span><span class="n">x0</span><span class="o">=</span><span class="n">do_step</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>       
+            <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> 
+                <span class="k">print</span> <span class="n">i</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span><span class="n">ret</span>
+            
+        <span class="n">ret</span><span class="o">=</span><span class="mi">0</span>
+        <span class="n">val</span><span class="o">=</span><span class="n">org_val</span>
+        <span class="n">x0</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">best</span><span class="p">)</span>
+        <span class="n">val</span><span class="o">=</span><span class="n">x0</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+        <span class="n">iteration</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">while</span> <span class="n">ret</span><span class="o">&lt;</span><span class="mf">0.99</span> <span class="ow">and</span> <span class="n">iteration</span><span class="o">&lt;</span><span class="n">max_iter</span><span class="p">:</span>        
+            <span class="n">val</span><span class="o">-=</span><span class="n">step</span>   
+            <span class="n">ret</span><span class="p">,</span><span class="n">x0</span><span class="o">=</span><span class="n">do_step</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
+            <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> 
+                <span class="k">print</span> <span class="n">i</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span><span class="n">ret</span>
+
+        <span class="n">hist_array</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">hist</span><span class="p">)</span>
+        <span class="n">idx</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">hist_array</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">hist_array</span><span class="o">=</span><span class="n">hist_array</span><span class="p">[</span><span class="n">idx</span><span class="p">,:]</span>
+        <span class="n">list_of_arrays</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">hist_array</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">list_of_arrays</span>
+    
+<span class="k">def</span> <span class="nf">plot2c</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">true_val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Helper function for plotting&quot;&quot;&quot;</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">a</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">a</span><span class="p">[:,</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.95</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.89</span><span class="p">,</span><span class="sa">r</span><span class="s1">&#39;$2\sigma$&#39;</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.68</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.62</span><span class="p">,</span><span class="sa">r</span><span class="s1">&#39;$1\sigma$&#39;</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">true_val</span><span class="p">,</span><span class="n">ymax</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">)</span>
+    <span class="c1">#plt.text(true_val, 0.4, &#39;)</span>
+
+<span class="k">def</span> <span class="nf">calc_error</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Function to calculate the errors from the estimated covariance matrix.</span>
+<span class="sd">    </span>
+<span class="sd">    Takes the output from leastsq with full_output=1 as argument.    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">p</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">mesg</span><span class="p">,</span> <span class="n">success</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="n">chisq</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;fvec&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;fvec&quot;</span><span class="p">])</span>
+    <span class="n">dof</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;fvec&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cov</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">chisq</span> <span class="o">/</span> <span class="n">dof</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">))])</span>
+    <span class="k">return</span> <span class="n">p</span><span class="p">,</span> <span class="n">sigma</span>   
+
+<span class="c1">#Generate test data</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
+<span class="c1">#Our data a*x+b with a=3, b=3</span>
+<span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="o">*</span><span class="n">x</span><span class="o">+</span><span class="mi">3</span>
+<span class="n">yn</span><span class="o">=</span><span class="n">y</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">size</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span>
+<span class="c1">#The residual function to fit.</span>
+<span class="k">def</span> <span class="nf">linear_fit</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="o">+</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">-</span><span class="n">yn</span>
+
+<span class="c1">#Fit it</span>
+<span class="n">out</span><span class="o">=</span><span class="n">leastsq</span><span class="p">(</span><span class="n">linear_fit</span><span class="p">,(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="n">full_output</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="c1">#Calc error from cov. matrix</span>
+<span class="n">p</span><span class="p">,</span><span class="n">s</span><span class="o">=</span><span class="n">calc_error</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+<span class="c1">#Plot</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">221</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">yn</span><span class="p">,</span><span class="s1">&#39;ko&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">linear_fit</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">+</span><span class="n">yn</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+
+<span class="c1">#Using our method</span>
+<span class="n">b</span><span class="o">=</span><span class="n">chi_search</span><span class="p">(</span><span class="n">linear_fit</span><span class="p">,</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="c1">#Display results</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">222</span><span class="p">)</span>
+<span class="n">plot2c</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hlines</span><span class="p">(</span><span class="mf">0.68</span><span class="p">,</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;probability&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">223</span><span class="p">)</span>
+<span class="n">plot2c</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hlines</span><span class="p">(</span><span class="mf">0.68</span><span class="p">,</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;probability&#39;</span><span class="p">)</span>
+
+
+<span class="c1">#Show prob(a,b) surface:</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">224</span><span class="p">)</span>
+<span class="n">S0</span><span class="o">=</span><span class="n">sumsq</span><span class="p">(</span><span class="n">linear_fit</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+<span class="n">pos_a</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span><span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span><span class="mi">40</span><span class="p">)</span>
+<span class="n">pos_b</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">][:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">][:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span><span class="mi">40</span><span class="p">)</span>
+<span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">pos_a</span><span class="p">,</span><span class="n">pos_b</span><span class="p">)</span>
+<span class="n">paras</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dstack</span><span class="p">((</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">))</span>
+<span class="n">ap</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">f_compare</span><span class="p">(</span><span class="n">linear_fit</span><span class="p">,</span><span class="n">p</span><span class="p">,</span><span class="n">S0</span><span class="p">,</span><span class="n">y</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="n">chisq</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">apply_along_axis</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">paras</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hot</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">pos_a</span><span class="p">,</span><span class="n">pos_b</span><span class="p">,</span><span class="n">chisq</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="36-error-estimates-for-fit-parameters-resulting-from-least-squares-fits-using-bootstrap-resampling.html" title="previous chapter">Error estimates for fit parameters resulting from least-squares fits using bootstrap resampling</a></li>
+      <li>Next: <a href="38-roc-curve-demo.html" title="next chapter">ROC curve demo</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/37-generating-confidence-intervals-via-model-comparsion.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

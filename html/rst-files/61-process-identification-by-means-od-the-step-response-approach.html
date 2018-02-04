@@ -1,0 +1,309 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Process Identification by means od the Step Response approach &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="f2py with opaque Fortran derived types" href="60-f2py-with-opaque-fortran-derived-types.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="process-identification-by-means-od-the-step-response-approach">
+<h1>Process Identification by means od the Step Response approach<a class="headerlink" href="#process-identification-by-means-od-the-step-response-approach" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> jonathan-ospino-pinedo</p>
+<p><strong>Submitted on:</strong> 2013-02-28 17:43:41-08:00</p>
+<p>This code snippet provides to the user the possibility of approximating a dynamical system to a <em>First-Order-Plus-Dead-Time (FOPDT)</em> dynamical systems using the &quot;Fit 3&quot; approach commented in <em>&quot;Principles and Practice of Automatic Process Control&quot;</em> (Corrpio &amp; Smith, 2005).</p>
+<p>For the python function described in the previous code, the user has to call the function according to <em>steptestingtxt('FILENAME.TXT')</em>. For more information about the function, call the function docstring in the ipython console by means of <em>steptesting?</em> or look inside the script file <a href="#id1"><span class="problematic" id="id2">*</span></a>.py.</p>
+<p><strong>Example</strong></p>
+<p>A test data file was supplied. The basic structure of this <em>.TXT file has the form {t, u, y}, where *t</em>, <em>u</em>, and <em>y</em> correspond to the <em>time</em>, the <em>input signal</em>, and the <em>response signal</em> respectively. After calling the function with this data set, the results are displayed in a graphical way as in the following figure:</p>
+<img alt="../_images/sample_pysteptestingtxt_1.png" src="../_images/sample_pysteptestingtxt_1.png" />
+<p>If used in an interactive ipython console the function also will print some text on the console prompt.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pylab</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="k">def</span> <span class="nf">steptestingtxt</span><span class="p">(</span><span class="n">File</span><span class="p">,</span> <span class="n">ColTime</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ColInput</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ColResponse</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">Summary</span><span class="o">=</span><span class="s1">&#39;off&#39;</span><span class="p">,</span><span class="n">ExportTxt</span><span class="o">=</span><span class="s1">&#39;off&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    STEPTESTINGTXT</span>
+<span class="sd">    Approximation of a response characterization curve to a FOPDT dynamics.</span>
+
+<span class="sd">    Syntax:  steptesting(FILE,COLTIME,COLINPUT,COLRESPONSE,SUMMARY)</span>
+
+<span class="sd">    BRIEF DESCRIPTION</span>
+<span class="sd">    This function loads a file and computes the parameters of a First-Order-Plus-Deat-Time (FOPDT) dynamics </span>
+<span class="sd">    approximation for the given response curve (RESPONSE vs TIME) to the given step input function (INPUT vs </span>
+<span class="sd">    TIME). Where TIME, INPUT, and RESPONSE corresponds to the columns COLTIME, COLINPUT, and COLRESPONSE, </span>
+<span class="sd">    respectively.</span>
+
+<span class="sd">    The reported parameters are: the gain (K), the time constant (TAU), and the time delay (t0). </span>
+<span class="sd">    These ones correspond to a FOPDT dynamics given by the following transfer function:</span>
+
+<span class="sd">                    K.e^(-t0.s)      Y(s)      RESPONSE(s)</span>
+<span class="sd">           G(s) = --------------- = ------ = ---------------</span>
+<span class="sd">                    TAU.s + 1        U(s)       INPUT(s)</span>
+
+<span class="sd">    where Y(s) and U(s) are the Laplace transforms of the deviation variables:</span>
+
+<span class="sd">           U(t) = u(t)-u(0)    , and</span>
+<span class="sd">           Y(t) = y(t)-y(0)</span>
+
+<span class="sd">    which correspond to the INPUT and RESPONSE variables, respectively.</span>
+
+<span class="sd">    SUMMARY corresponds to a &#39;on&#39;/&#39;off&#39; switch for showing or not a summary table</span>
+<span class="sd">    besides the resulting plots.</span>
+
+<span class="sd">    Created by Ospino P.,J. </span>
+<span class="sd">    Colombia, 2012.</span>
+<span class="sd">    &#39;&#39;&#39;</span>    
+<span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+
+
+    <span class="n">A</span><span class="o">=</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">File</span><span class="p">)</span>
+       	
+    <span class="n">Time</span><span class="o">=</span><span class="n">A</span><span class="p">[:,</span><span class="n">ColTime</span><span class="p">][:,</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">Input</span><span class="o">=</span><span class="n">A</span><span class="p">[:,</span><span class="n">ColInput</span><span class="p">][:,</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">Response</span><span class="o">=</span><span class="n">A</span><span class="p">[:,</span><span class="n">ColResponse</span><span class="p">][:,</span><span class="n">newaxis</span><span class="p">]</span>
+
+    <span class="n">clf</span><span class="p">()</span>
+
+    <span class="c1"># Data format</span>
+    <span class="n">sizet</span><span class="o">=</span><span class="n">shape</span><span class="p">(</span><span class="n">Time</span><span class="p">)</span>
+    <span class="n">sizeu</span><span class="o">=</span><span class="n">shape</span><span class="p">(</span><span class="n">Input</span><span class="p">)</span>
+    <span class="n">sizey</span><span class="o">=</span><span class="n">shape</span><span class="p">(</span><span class="n">Response</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">sizet</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;=</span><span class="n">sizet</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">t</span><span class="o">=</span><span class="n">Time</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">t</span><span class="o">=</span><span class="n">Time</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="k">if</span> <span class="n">sizeu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;=</span><span class="n">sizeu</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">u</span><span class="o">=</span><span class="n">Input</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">u</span><span class="o">=</span><span class="n">Input</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="k">if</span> <span class="n">sizey</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;=</span><span class="n">sizey</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">Response</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">Response</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="c1"># Gain</span>
+    <span class="n">K</span><span class="o">=</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># Y-coordinates of t1 and t2</span>
+    <span class="n">yt1</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mf">0.283</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">yt2</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mf">0.632</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># LINEAR INTERPOLATION</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">size</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span> <span class="c1">#j=2:length(t)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;=</span><span class="n">yt1</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">&gt;=</span><span class="n">yt1</span><span class="p">):</span> 
+            <span class="n">a1</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">ta1</span><span class="o">=</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">b1</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">tb1</span><span class="o">=</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;=</span><span class="n">yt2</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">&gt;=</span><span class="n">yt2</span><span class="p">):</span> 
+            <span class="n">a2</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">ta2</span><span class="o">=</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">b2</span><span class="o">=</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">tb2</span><span class="o">=</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+
+    <span class="c1"># Values of t1 and t2</span>
+    <span class="n">t1</span><span class="o">=</span><span class="p">((</span><span class="n">yt1</span><span class="o">-</span><span class="n">a1</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">b1</span><span class="o">-</span><span class="n">a1</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="n">tb1</span><span class="o">-</span><span class="n">ta1</span><span class="p">)</span><span class="o">+</span><span class="n">ta1</span>
+    <span class="n">t2</span><span class="o">=</span><span class="p">((</span><span class="n">yt2</span><span class="o">-</span><span class="n">a2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">b2</span><span class="o">-</span><span class="n">a2</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="n">tb2</span><span class="o">-</span><span class="n">ta2</span><span class="p">)</span><span class="o">+</span><span class="n">ta2</span>
+
+    <span class="c1"># Time constant</span>
+    <span class="n">Tau</span><span class="o">=</span><span class="mf">3.0</span><span class="o">*</span><span class="p">(</span><span class="n">t2</span><span class="o">-</span><span class="n">t1</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span>
+
+    <span class="c1"># Time delay</span>
+    <span class="n">t0</span><span class="o">=</span><span class="n">t2</span><span class="o">-</span><span class="n">Tau</span>
+
+    <span class="c1"># FOPDT plot</span>
+    <span class="n">u2</span> <span class="o">=</span> <span class="n">empty_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">ystar</span> <span class="o">=</span> <span class="n">empty_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">size</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>    <span class="c1"># for j=1:length(t)</span>
+        <span class="k">if</span> <span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">&lt;</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">t0</span><span class="p">):</span>
+            <span class="n">u2</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">u2</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="mi">1</span>            
+        <span class="n">ystar</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="n">K</span><span class="o">*</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="n">u2</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span><span class="o">/</span><span class="n">Tau</span><span class="p">))</span><span class="o">+</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Error and deviation</span>
+    <span class="n">Deviation</span><span class="o">=</span><span class="n">ystar</span><span class="o">-</span><span class="n">y</span>
+    <span class="n">Error</span> <span class="o">=</span> <span class="n">empty</span><span class="p">(</span><span class="n">size</span><span class="p">(</span><span class="n">t</span><span class="p">))</span> 
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">size</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>    <span class="c1"># for j=1:length(t)</span>
+        <span class="k">if</span> <span class="n">Deviation</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">Error</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="mi">100</span><span class="o">*</span><span class="nb">abs</span><span class="p">(</span><span class="n">Deviation</span><span class="p">[</span><span class="n">j</span><span class="p">])</span><span class="o">/</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">Error</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">Error</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="mi">100</span><span class="o">*</span><span class="nb">abs</span><span class="p">(</span><span class="n">Deviation</span><span class="p">[</span><span class="n">j</span><span class="p">])</span><span class="o">/</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">Error</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="mi">0</span>
+
+    <span class="n">StdDeviation</span><span class="o">=</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">((</span><span class="n">ystar</span><span class="o">-</span><span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">size</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">));</span>
+
+    <span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">u</span><span class="p">,</span><span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+    <span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">),</span> <span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Step input, u&#39;</span><span class="p">)</span> 
+    <span class="n">xlim</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">t</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">ylim</span><span class="p">(</span><span class="mf">0.95</span><span class="o">*</span><span class="nb">min</span><span class="p">(</span><span class="n">u</span><span class="p">),</span><span class="mf">1.05</span><span class="o">*</span><span class="nb">max</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>  
+    <span class="n">grid</span><span class="p">()</span>
+
+    <span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;k.&#39;</span><span class="p">)</span>
+    <span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">),</span> <span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Original response, y&#39;</span><span class="p">)</span> 
+    <span class="c1">#xlim(t[0],t[-1]), ylim(0.95*min(y),1.05*max(y))   </span>
+    <span class="n">grid</span><span class="p">()</span>
+
+    <span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">ystar</span><span class="p">,</span><span class="s1">&#39;r-&#39;</span><span class="p">)</span>
+    <span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">),</span> <span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;FOPDT response, y*&#39;</span><span class="p">)</span> 
+    <span class="c1">#xlim(t[0],t[-1]), ylim(0.95*min(ystar),1.05*max(ystar))   </span>
+    <span class="n">grid</span><span class="p">()</span>
+
+    <span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;k.&#39;</span><span class="p">,</span><span class="n">t</span><span class="p">,</span><span class="n">ystar</span><span class="p">,</span><span class="s1">&#39;r-&#39;</span><span class="p">)</span>
+    <span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">),</span> <span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Response curve&#39;</span><span class="p">)</span>
+    <span class="c1">#xlim(t[0],t[-1]), ylim(0.95*min(min(y),min(ystar)),1.05*max(max(y),max(ystar))) </span>
+    <span class="n">legend</span><span class="p">((</span><span class="s1">&#39;Original&#39;</span><span class="p">,</span><span class="s1">&#39;FOPDT&#39;</span><span class="p">),</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;lower right&#39;</span><span class="p">)</span>
+    <span class="n">grid</span><span class="p">()</span>
+
+    <span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>  
+    <span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">Deviation</span><span class="p">,</span><span class="s1">&#39;b-&#39;</span><span class="p">)</span>
+    <span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">),</span> <span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Deviation = y*(t)-y(t)&#39;</span><span class="p">)</span> 
+    <span class="c1">#xlim(t[0],t[-1]), ylim(0.95*min(Deviation),1.05*max(Deviation))</span>
+    <span class="n">grid</span><span class="p">()</span>
+
+    <span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">)</span>  
+    <span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">Error</span><span class="p">,</span><span class="s1">&#39;r-&#39;</span><span class="p">)</span>
+    <span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">),</span> <span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Deviation Error (%)&#39;</span><span class="p">)</span> 
+    <span class="c1">#xlim(t[0],t[-1]), ylim(0.95*min(Error), 1.05*max(Error))</span>
+    <span class="n">grid</span><span class="p">()</span>
+    <span class="n">show</span><span class="p">()</span>
+      
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;RESULTS&#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>  
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;    Parameters of the FOPDT approximation&#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s1">&#39;   K = &#39;</span><span class="p">,</span> <span class="n">K</span>
+    <span class="k">print</span> <span class="s1">&#39;   Tau = &#39;</span><span class="p">,</span> <span class="n">Tau</span>
+    <span class="k">print</span> <span class="s1">&#39;   t0 = &#39;</span><span class="p">,</span> <span class="n">t0</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    
+    <span class="n">tu</span> <span class="o">=</span> <span class="n">concatenate</span><span class="p">((</span><span class="n">t</span><span class="p">,</span><span class="n">u</span><span class="p">),</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>   <span class="c1">#[t u y ystar Deviation]</span>
+    <span class="n">tuy</span> <span class="o">=</span> <span class="n">concatenate</span><span class="p">((</span><span class="n">tu</span><span class="p">,</span><span class="n">y</span><span class="p">),</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">tuyystar</span> <span class="o">=</span> <span class="n">concatenate</span><span class="p">((</span><span class="n">tuy</span><span class="p">,</span><span class="n">ystar</span><span class="p">),</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">summarytable</span> <span class="o">=</span> <span class="n">concatenate</span><span class="p">((</span><span class="n">tuyystar</span><span class="p">,</span><span class="n">Deviation</span><span class="p">),</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">Summary</span> <span class="o">==</span> <span class="s1">&#39;on&#39;</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;     Summary Table&#39;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;    ----------------------------------------------------&#39;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;       t       u           y         y*       Deviation&#39;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;    ------   ------     ------     ------     ----------&#39;</span><span class="p">)</span>        
+        <span class="k">print</span> <span class="n">summarytable</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;    ----------------------------------------------------&#39;</span><span class="p">)</span>    
+        <span class="k">print</span> <span class="s1">&#39;   Standard deviation = &#39;</span><span class="p">,</span> <span class="n">StdDeviation</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">summarytable</span>
+    <span class="k">if</span> <span class="n">Summary</span> <span class="o">==</span> <span class="s1">&#39;off&#39;</span><span class="p">:</span>
+        <span class="k">pass</span>
+    
+    <span class="k">if</span> <span class="n">ExportTxt</span> <span class="o">==</span> <span class="s1">&#39;on&#39;</span><span class="p">:</span> 
+        <span class="n">archive</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;Summary Table.txt&#39;</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;#Result Summary Table </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;#----------------------------------------------------</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;#  t       u           y         y*       Deviation </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;#------   ------     ------     ------     ----------</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">summarytable</span><span class="p">:</span>
+            <span class="n">textline</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%f</span><span class="s1">    </span><span class="si">%f</span><span class="s1">    </span><span class="si">%f</span><span class="s1">    </span><span class="si">%f</span><span class="s1">    </span><span class="si">%f</span><span class="s1"> </span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">row</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">row</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="n">row</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span><span class="n">row</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+            <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">textline</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;----------------------------------------------------</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>  <span class="s1">&#39;#Standard Deviation = </span><span class="si">%f</span><span class="s1">&#39;</span> <span class="o">%</span><span class="n">StdDeviation</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="n">archive</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;     Final dynamic equation&#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s1">&#39;    &#39;</span><span class="p">,</span> <span class="n">Tau</span><span class="p">,</span> <span class="s1">&#39;*(dy[t]/dt)+ y[t]= &#39;</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="s1">&#39;*u[t-&#39;</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="s1">&#39;]&#39;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="60-f2py-with-opaque-fortran-derived-types.html" title="previous chapter">f2py with opaque Fortran derived types</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/61-process-identification-by-means-od-the-step-response-approach.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

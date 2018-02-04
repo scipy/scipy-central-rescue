@@ -1,0 +1,137 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using Prony&#39;s metho to fit a sum of exponentials &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Binary Liquid Mixture Immiscibility and Stability" href="32-binary-liquid-mixture-immiscibility-and-stability.html" />
+    <link rel="prev" title="Fitting a Gaussian to noisy data-points" href="28-fitting-a-gaussian-to-noisy-data-points.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-prony-s-metho-to-fit-a-sum-of-exponentials">
+<h1>Using Prony's metho to fit a sum of exponentials<a class="headerlink" href="#using-prony-s-metho-to-fit-a-sum-of-exponentials" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> fperez</p>
+<p><strong>Submitted on:</strong> 2011-11-10 15:26:32-08:00</p>
+<p>This a basic implementation of Prony's method. In this form, it is very susceptible to noise.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+<span class="kn">import</span> <span class="nn">scipy.linalg</span> <span class="kn">as</span> <span class="nn">la</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">expfit</span><span class="p">(</span><span class="n">deg</span><span class="p">,</span><span class="n">x1</span><span class="p">,</span><span class="n">h</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+    <span class="c1">#Build matrix</span>
+    <span class="n">A</span><span class="o">=</span><span class="n">la</span><span class="o">.</span><span class="n">hankel</span><span class="p">(</span><span class="n">y</span><span class="p">[:</span><span class="o">-</span><span class="n">deg</span><span class="p">],</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="n">deg</span><span class="o">-</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="n">a</span><span class="o">=-</span><span class="n">A</span><span class="p">[:,:</span><span class="n">deg</span><span class="p">]</span>    
+    <span class="n">b</span><span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="n">deg</span><span class="p">]</span>
+    <span class="c1">#Solve it</span>
+    <span class="n">s</span><span class="o">=</span><span class="n">la</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1">#Solve polynomial</span>
+    <span class="n">p</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">flipud</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)))</span>
+    <span class="n">u</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">roots</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="c1">#Calc exponential factors</span>
+    <span class="n">a</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">u</span><span class="p">)</span><span class="o">/</span><span class="n">h</span>
+    <span class="c1">#Build power matrix</span>
+    <span class="n">A</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span><span class="o">*</span><span class="n">u</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))[:,</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="n">deg</span><span class="p">)))</span>
+    <span class="c1">#solve it </span>
+    <span class="n">f</span><span class="o">=</span><span class="n">la</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1">#calc amplitudes </span>
+    <span class="n">c</span><span class="o">=</span><span class="n">f</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">a</span><span class="o">*</span><span class="n">x1</span><span class="p">)</span>    
+    <span class="c1">#build x, approx and calc rms</span>
+    <span class="n">x</span><span class="o">=</span><span class="n">x1</span><span class="o">+</span><span class="n">h</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+    <span class="n">approx</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">a</span><span class="p">[:,</span><span class="bp">None</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">c</span><span class="p">[:,</span><span class="bp">None</span><span class="p">])</span>
+    <span class="n">rms</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">approx</span><span class="o">-</span><span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">a</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span><span class="n">rms</span>
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span>
+    <span class="n">x0</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="mf">0.005</span> 
+    <span class="n">xend</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="n">xend</span><span class="o">+</span><span class="n">step</span><span class="p">,</span><span class="n">step</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="mf">1.3</span><span class="o">*</span><span class="n">x</span><span class="p">)</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>    
+    <span class="n">error</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="mf">1e-4</span><span class="p">;</span>
+    <span class="n">alpha</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">rms</span> <span class="o">=</span> <span class="n">expfit</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">x0</span><span class="p">,</span><span class="n">step</span><span class="p">,</span><span class="n">y</span><span class="o">+</span><span class="n">y</span><span class="o">*</span><span class="n">error</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="o">+</span><span class="n">y</span><span class="o">*</span><span class="n">error</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="28-fitting-a-gaussian-to-noisy-data-points.html" title="previous chapter">Fitting a Gaussian to noisy data-points</a></li>
+      <li>Next: <a href="32-binary-liquid-mixture-immiscibility-and-stability.html" title="next chapter">Binary Liquid Mixture Immiscibility and Stability</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/31-using-pronys-metho-to-fit-a-sum-of-exponentials.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

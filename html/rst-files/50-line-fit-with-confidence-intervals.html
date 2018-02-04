@@ -1,0 +1,258 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Line Fit with Confidence Intervals &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Adaptive sampling of 1D functions" href="53-adaptive-sampling-of-1d-functions.html" />
+    <link rel="prev" title="Savitzky-Golay Filter" href="49-savitzky-golay-filter.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="line-fit-with-confidence-intervals">
+<h1>Line Fit with Confidence Intervals<a class="headerlink" href="#line-fit-with-confidence-intervals" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> thomashaslwanter</p>
+<p><strong>Submitted on:</strong> 2012-11-01 01:00:34-07:00</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># License: Creative Commons Zero (almost public domain) http://scpyce.org/cc0</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">scipy.stats</span> <span class="kn">as</span> <span class="nn">stats</span>
+
+<span class="k">def</span> <span class="nf">fitLine</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">newx</span><span class="o">=</span><span class="p">[],</span> <span class="n">plotFlag</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Fit a curve to the data using a least squares 1st order polynomial fit</span>
+
+<span class="sd">    Linear regression fit</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray</span>
+<span class="sd">        Input / Predictor</span>
+<span class="sd">    y : ndarray</span>
+<span class="sd">        Input / Estimator</span>
+<span class="sd">    alpha : float</span>
+<span class="sd">        Confidence limit [default=0.05]</span>
+<span class="sd">    newx : float or ndarray</span>
+<span class="sd">        Values for which the fit and the prediction limits are calculated (optional)</span>
+<span class="sd">    plotFlag: int (optional)</span>
+<span class="sd">        1 = plot, 0 = no_plot [default]</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    a : float</span>
+<span class="sd">        Intercept</span>
+<span class="sd">    b : float</span>
+<span class="sd">        Slope</span>
+<span class="sd">    ci : ndarray</span>
+<span class="sd">        Lower and upper confidence interval for the slope</span>
+<span class="sd">    info : dictionary, containing return information on</span>
+<span class="sd">        - residuals</span>
+<span class="sd">        - var_res</span>
+<span class="sd">        - sd_res</span>
+<span class="sd">        - alpha</span>
+<span class="sd">        - tval</span>
+<span class="sd">        - df</span>
+<span class="sd">    newy : list(ndarray)</span>
+<span class="sd">        Predictions for (newx, newx-ciPrediction, newx+ciPrediction)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; from fitLine import fitLine</span>
+<span class="sd">    &gt;&gt;&gt; x = np.r_[0:10:11j]</span>
+<span class="sd">    &gt;&gt;&gt; y = x**2</span>
+<span class="sd">    &gt;&gt;&gt; (a,b,(ci_a, ci_b),_)=fitLine(x,y)</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Example data and formulas are taken from</span>
+<span class="sd">    D. Altman, &quot;Practical Statistics for Medicine&quot;</span>
+<span class="sd">    </span>
+<span class="sd">    author : thomas haslwanter</span>
+<span class="sd">    date : 28 oct 2012</span>
+<span class="sd">    ver : 1.1</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># Summary data</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>			   <span class="c1"># number of samples</span>
+
+    <span class="n">Sxx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">n</span>
+<span class="c1">#    Syy = np.sum(y**2) - np.sum(y)**2/n    # not needed here</span>
+    <span class="n">Sxy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">/</span><span class="n">n</span>
+    <span class="n">mean_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">mean_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="c1"># Linefit</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">Sxy</span><span class="o">/</span><span class="n">Sxx</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">mean_y</span> <span class="o">-</span> <span class="n">b</span><span class="o">*</span><span class="n">mean_x</span>
+
+    <span class="c1"># Residuals</span>
+    <span class="n">fit</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xx</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="o">*</span><span class="n">xx</span>
+    <span class="n">residuals</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="n">var_res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">residuals</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">sd_res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var_res</span><span class="p">)</span>
+
+    <span class="c1"># Confidence intervals</span>
+    <span class="n">se_b</span> <span class="o">=</span> <span class="n">sd_res</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Sxx</span><span class="p">)</span>
+    <span class="n">se_a</span> <span class="o">=</span> <span class="n">sd_res</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">*</span><span class="n">Sxx</span><span class="p">))</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">n</span><span class="o">-</span><span class="mi">2</span>                            <span class="c1"># degrees of freedom</span>
+    <span class="n">tval</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">isf</span><span class="p">(</span><span class="n">alpha</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span> 	<span class="c1"># appropriate t value</span>
+
+    <span class="n">ci_a</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">tval</span><span class="o">*</span><span class="n">se_a</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">ci_b</span> <span class="o">=</span> <span class="n">b</span> <span class="o">+</span> <span class="n">tval</span><span class="o">*</span><span class="n">se_b</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># create series of new test x-values to predict for</span>
+    <span class="n">npts</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">px</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="n">num</span><span class="o">=</span><span class="n">npts</span><span class="p">)</span>
+
+    <span class="n">se_fit</span>     <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">sd_res</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>  <span class="mf">1.</span><span class="o">/</span><span class="n">n</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">mean_x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">Sxx</span><span class="p">)</span>
+    <span class="n">se_predict</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">sd_res</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="mf">1.</span><span class="o">/</span><span class="n">n</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">mean_x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">Sxx</span><span class="p">)</span>
+
+    <span class="k">print</span> <span class="s1">&#39;Summary: a={0:5.4f}+/-{1:5.4f}, b={2:5.4f}+/-{3:5.4f}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">tval</span><span class="o">*</span><span class="n">se_a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">tval</span><span class="o">*</span><span class="n">se_b</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s1">&#39;Confidence intervals: ci_a=({0:5.4f} - {1:5.4f}), ci_b=({2:5.4f} - {3:5.4f})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ci_a</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ci_a</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ci_b</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ci_b</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">print</span> <span class="s1">&#39;Residuals: variance = {0:5.4f}, standard deviation = {1:5.4f}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var_res</span><span class="p">,</span> <span class="n">sd_res</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s1">&#39;alpha = {0:.3f}, tval = {1:5.4f}, df={2:d}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">tval</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+
+    <span class="c1"># Return info</span>
+    <span class="n">ri</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;residuals&#39;</span><span class="p">:</span> <span class="n">residuals</span><span class="p">,</span>
+        <span class="s1">&#39;var_res&#39;</span><span class="p">:</span> <span class="n">var_res</span><span class="p">,</span>
+        <span class="s1">&#39;sd_res&#39;</span><span class="p">:</span> <span class="n">sd_res</span><span class="p">,</span>
+        <span class="s1">&#39;alpha&#39;</span><span class="p">:</span> <span class="n">alpha</span><span class="p">,</span>
+        <span class="s1">&#39;tval&#39;</span><span class="p">:</span> <span class="n">tval</span><span class="p">,</span>
+        <span class="s1">&#39;df&#39;</span><span class="p">:</span> <span class="n">df</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">plotFlag</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># Plot the data</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">px</span><span class="p">,</span> <span class="n">fit</span><span class="p">(</span><span class="n">px</span><span class="p">),</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Regression line&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;r.&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Sample observations&#39;</span><span class="p">)</span>
+
+        <span class="n">x</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">limit</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">alpha</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">+</span><span class="n">tval</span><span class="o">*</span><span class="n">se_fit</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s1">&#39;r--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Confidence limit ({0:.1f}%)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">limit</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">-</span><span class="n">tval</span><span class="o">*</span><span class="n">se_fit</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s1">&#39;r--&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">+</span><span class="n">tval</span><span class="o">*</span><span class="n">se_predict</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s1">&#39;c--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Prediction limit ({0:.1f}%)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">limit</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">-</span><span class="n">tval</span><span class="o">*</span><span class="n">se_predict</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s1">&#39;c--&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;X values&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Y values&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Linear regression and confidence limits&#39;</span><span class="p">)</span>
+
+        <span class="c1"># configure legend</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">leg</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">get_legend</span><span class="p">()</span>
+        <span class="n">ltext</span> <span class="o">=</span> <span class="n">leg</span><span class="o">.</span><span class="n">get_texts</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">ltext</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="c1"># show the plot</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">newx</span> <span class="o">!=</span> <span class="p">[]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">newx</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">newx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">newx</span><span class="p">])</span>
+
+        <span class="k">print</span> <span class="s1">&#39;Example: x = {0}+/-{1} =&gt; se_fit = {2:5.4f}, se_predict = {3:6.5f}&#39;</span>\
+        <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">newx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tval</span><span class="o">*</span><span class="n">se_predict</span><span class="p">(</span><span class="n">newx</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">se_fit</span><span class="p">(</span><span class="n">newx</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">se_predict</span><span class="p">(</span><span class="n">newx</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="n">newy</span> <span class="o">=</span> <span class="p">(</span><span class="n">fit</span><span class="p">(</span><span class="n">newx</span><span class="p">),</span> <span class="n">fit</span><span class="p">(</span><span class="n">newx</span><span class="p">)</span><span class="o">-</span><span class="n">se_predict</span><span class="p">(</span><span class="n">newx</span><span class="p">),</span> <span class="n">fit</span><span class="p">(</span><span class="n">newx</span><span class="p">)</span><span class="o">+</span><span class="n">se_predict</span><span class="p">(</span><span class="n">newx</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,(</span><span class="n">ci_a</span><span class="p">,</span> <span class="n">ci_b</span><span class="p">),</span> <span class="n">ri</span><span class="p">,</span> <span class="n">newy</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,(</span><span class="n">ci_a</span><span class="p">,</span> <span class="n">ci_b</span><span class="p">),</span> <span class="n">ri</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+        <span class="c1"># example data</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">15.3</span><span class="p">,</span> <span class="mf">10.8</span><span class="p">,</span> <span class="mf">8.1</span><span class="p">,</span> <span class="mf">19.5</span><span class="p">,</span> <span class="mf">7.2</span><span class="p">,</span> <span class="mf">5.3</span><span class="p">,</span> <span class="mf">9.3</span><span class="p">,</span> <span class="mf">11.1</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">,</span> <span class="mf">12.2</span><span class="p">,</span>
+                      <span class="mf">6.7</span><span class="p">,</span> <span class="mf">5.2</span><span class="p">,</span> <span class="mf">19.0</span><span class="p">,</span> <span class="mf">15.1</span><span class="p">,</span> <span class="mf">6.7</span><span class="p">,</span> <span class="mf">8.6</span><span class="p">,</span> <span class="mf">4.2</span><span class="p">,</span> <span class="mf">10.3</span><span class="p">,</span> <span class="mf">12.5</span><span class="p">,</span> <span class="mf">16.1</span><span class="p">,</span>
+                      <span class="mf">13.3</span><span class="p">,</span> <span class="mf">4.9</span><span class="p">,</span> <span class="mf">8.8</span><span class="p">,</span> <span class="mf">9.5</span><span class="p">])</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.76</span><span class="p">,</span> <span class="mf">1.34</span><span class="p">,</span> <span class="mf">1.27</span><span class="p">,</span> <span class="mf">1.47</span><span class="p">,</span> <span class="mf">1.27</span><span class="p">,</span> <span class="mf">1.49</span><span class="p">,</span> <span class="mf">1.31</span><span class="p">,</span> <span class="mf">1.09</span><span class="p">,</span> <span class="mf">1.18</span><span class="p">,</span>
+                      <span class="mf">1.22</span><span class="p">,</span> <span class="mf">1.25</span><span class="p">,</span> <span class="mf">1.19</span><span class="p">,</span> <span class="mf">1.95</span><span class="p">,</span> <span class="mf">1.28</span><span class="p">,</span> <span class="mf">1.52</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="mf">1.12</span><span class="p">,</span> <span class="mf">1.37</span><span class="p">,</span>
+                      <span class="mf">1.19</span><span class="p">,</span> <span class="mf">1.05</span><span class="p">,</span> <span class="mf">1.32</span><span class="p">,</span> <span class="mf">1.03</span><span class="p">,</span> <span class="mf">1.12</span><span class="p">,</span> <span class="mf">1.70</span><span class="p">])</span>
+
+        <span class="n">goodIndex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">y</span><span class="p">)))</span>
+        <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,(</span><span class="n">ci_a</span><span class="p">,</span> <span class="n">ci_b</span><span class="p">),</span> <span class="n">ri</span><span class="p">,</span><span class="n">newy</span><span class="p">)</span> <span class="o">=</span> <span class="n">fitLine</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">goodIndex</span><span class="p">],</span><span class="n">y</span><span class="p">[</span><span class="n">goodIndex</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span><span class="n">newx</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mf">4.5</span><span class="p">]))</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="49-savitzky-golay-filter.html" title="previous chapter">Savitzky-Golay Filter</a></li>
+      <li>Next: <a href="53-adaptive-sampling-of-1d-functions.html" title="next chapter">Adaptive sampling of 1D functions</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/50-line-fit-with-confidence-intervals.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

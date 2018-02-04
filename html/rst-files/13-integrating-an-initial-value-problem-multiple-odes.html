@@ -1,0 +1,218 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="English">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Integrating an initial value problem (multiple ODEs) &#8212; code-snippets 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Principal components analysis (PCA) using a sequential method" href="15-principal-components-analysis-pca-using-a-sequential-method.html" />
+    <link rel="prev" title="Integrating an initial value problem (single ODE)" href="12-integrating-an-initial-value-problem-single-ode.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="integrating-an-initial-value-problem-multiple-odes">
+<h1>Integrating an initial value problem (multiple ODEs)<a class="headerlink" href="#integrating-an-initial-value-problem-multiple-odes" title="Permalink to this headline">¶</a></h1>
+<p><strong>Author:</strong> scipy-central</p>
+<p><strong>Submitted on:</strong> 2011-07-22 16:52:38-07:00</p>
+<p>We extend the example from <a class="reference external" href="http://scpyce.org/12/">http://scpyce.org/12/</a> here to integrate 2 coupled ODEs and include several algebraic equations.</p>
+<p>Consider a chemical reactor with a second order reaction <span class="math">\({\sf A} \rightarrow {\sf B}\)</span>. Our aim is calculate the concentration,  <span class="math">\(C_{\sf A}(t)\)</span>, and tank temperature, <span class="math">\(T(t)\)</span>, as functions of time using an ODE integrator.</p>
+<p>We know the reaction rate is <span class="math">\(r = k C_{\sf A}^2\)</span>, and is an algebraic function of temperature: <span class="math">\(k = 0.15 e^{- E_a/(RT)}\)</span> L/(mol.min). Furthermore, the reaction is known to release heat, with <span class="math">\(\Delta H_r = -590\)</span> J/mol.  The time-dependent mass and energy balance for this system can be derived:</p>
+<div class="math">
+\[\begin{split}\frac{dC_{\sf A}(t)}{dt} &amp;= \frac{F(t)}{V} \bigg( C_{{\sf A},\text{in}} - C_{\sf A} \bigg) - 0.15 e^{- E_a/(RT)} C_{\sf A}^2 \\
+\frac{dT(t)}{dt} &amp;= \frac{F(t)\rho C_p(T)}{V \rho C_p(T)}\bigg(T_\text{in} - T(t) \bigg) - \frac{0.15 e^{- E_a/(RT)} C_{\sf A}^2 V (\Delta H_r)}{V \rho C_p}\end{split}\]</div>
+<p>Notice that these are coupled ODEs, as the first ODE is a function of <span class="math">\(T(t)\)</span>, while the second ODE is a function of <span class="math">\(C_{\sf A}(t)\)</span>.
+We also know that:</p>
+<ul class="simple">
+<li><span class="math">\(C_{{\sf A},\text{in}} = 2.5\)</span> mol/L,</li>
+<li><span class="math">\(T_\text{in} = 288\)</span> K</li>
+<li>a constant volume of <span class="math">\(V = 100\)</span> L</li>
+<li>constant inlet flow of <span class="math">\(F(t) = 20.1\)</span> L/min, though we could easily make it a function of time and adjust the function <code class="docutils literal"><span class="pre">tank</span></code> to use the time variable, <code class="docutils literal"><span class="pre">t</span></code></li>
+<li>molar heat capacity is a weak function of the system temperature: <span class="math">\(C_p(T) = 4.184 - 0.002(T-273)\)</span> J/(kg.K),</li>
+<li>liquid phase density is <span class="math">\(\rho=1.05\)</span> kg/L.</li>
+<li><span class="math">\(E_a = 5000\)</span> J/mol</li>
+<li><span class="math">\(R = 8.314\)</span> J/(mol.K),</li>
+</ul>
+<p>We need two initial conditions, one for each of the ODEs:</p>
+<ul class="simple">
+<li><span class="math">\(C_{\sf A}(t=0) = 0.5\)</span> mol/L</li>
+<li><span class="math">\(T(t=0) = 295\)</span> K</li>
+</ul>
+<p>In the code we will integrate the ODE from <span class="math">\(t_\text{start} = 0.0\)</span> minutes up to <span class="math">\(t_\text{final} = 45.0\)</span> minutes
+and plot the time-varying trajectories of temperature and concentration in the tank using <code class="docutils literal"><span class="pre">matplotlib</span></code>.</p>
+<p>Read the <a class="reference external" href="http://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.ode.html">SciPy documentation</a> for <code class="docutils literal"><span class="pre">ode</span></code>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># This code is an extension of http://scpyce.org/12/</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">integrate</span>
+<span class="kn">from</span> <span class="nn">matplotlib.pylab</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="k">def</span> <span class="nf">tank</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dynamic balance for a CSTR</span>
+
+<span class="sd">    C_A = y[0] = the concentration of A in the tank, [mol/L]</span>
+<span class="sd">    T   = y[1] = the tank temperature, [K]</span>
+
+<span class="sd">    Returns dy/dt = [F/V*(C_{A,in} - C_A) - k*C_A^2       ]</span>
+<span class="sd">                    [F/V*(T_in - T) - k*C_A^2*HR/(rho*Cp) ]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="mf">20.1</span>     <span class="c1"># L/min</span>
+    <span class="n">CA_in</span> <span class="o">=</span> <span class="mf">2.5</span>  <span class="c1"># mol/L</span>
+    <span class="n">V</span> <span class="o">=</span> <span class="mf">100.0</span>    <span class="c1"># L</span>
+    <span class="n">k0</span> <span class="o">=</span> <span class="mf">0.15</span>    <span class="c1"># L/(mol.min)</span>
+    <span class="n">Ea</span> <span class="o">=</span> <span class="mi">5000</span>    <span class="c1"># J/mol</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="mf">8.314</span>    <span class="c1"># J/(mol.K)</span>
+    <span class="n">Hr</span> <span class="o">=</span> <span class="o">-</span><span class="mi">590</span>    <span class="c1"># J/mol</span>
+    <span class="n">T_in</span> <span class="o">=</span> <span class="mi">288</span>   <span class="c1"># K</span>
+    <span class="n">rho</span> <span class="o">=</span> <span class="mf">1.050</span>  <span class="c1"># kg/L</span>
+
+    <span class="c1"># Assign some variables for convenience of notation</span>
+    <span class="n">CA</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">T</span>  <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Algebraic equations</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">k0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">Ea</span><span class="o">/</span><span class="p">(</span><span class="n">R</span><span class="o">*</span><span class="n">T</span><span class="p">))</span>  <span class="c1"># L/(mol.min)</span>
+    <span class="n">Cp</span> <span class="o">=</span> <span class="mf">4.184</span> <span class="o">-</span> <span class="mf">0.002</span><span class="o">*</span><span class="p">(</span><span class="n">T</span><span class="o">-</span><span class="mi">273</span><span class="p">)</span>  <span class="c1"># J/(kg.K)</span>
+
+    <span class="c1"># Output from ODE function must be a COLUMN vector, with n rows</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>      <span class="c1"># 2: implies we have two ODEs</span>
+    <span class="n">dydt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">dydt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">F</span><span class="o">/</span><span class="n">V</span><span class="o">*</span><span class="p">(</span><span class="n">CA_in</span> <span class="o">-</span> <span class="n">CA</span><span class="p">)</span> <span class="o">-</span> <span class="n">k</span><span class="o">*</span><span class="n">CA</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">dydt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">F</span><span class="o">/</span><span class="n">V</span><span class="o">*</span><span class="p">(</span><span class="n">T_in</span> <span class="o">-</span> <span class="n">T</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">Hr</span><span class="o">*</span><span class="n">k</span><span class="o">*</span><span class="n">CA</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">rho</span><span class="o">*</span><span class="n">Cp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dydt</span>
+
+<span class="c1"># The &quot;driver&quot; that will integrate the ODE(s):</span>
+<span class="c1"># -----------</span>
+
+<span class="c1"># Start by specifying the integrator:</span>
+<span class="c1"># use ``vode`` with &quot;backward differentiation formula&quot;</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">integrate</span><span class="o">.</span><span class="n">ode</span><span class="p">(</span><span class="n">tank</span><span class="p">)</span><span class="o">.</span><span class="n">set_integrator</span><span class="p">(</span><span class="s1">&#39;vode&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bdf&#39;</span><span class="p">)</span>
+
+<span class="c1"># Set the time range</span>
+<span class="n">t_start</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">t_final</span> <span class="o">=</span> <span class="mf">45.0</span>
+<span class="n">delta_t</span> <span class="o">=</span> <span class="mf">0.1</span>
+<span class="c1"># Number of time steps: 1 extra for initial condition</span>
+<span class="n">num_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">((</span><span class="n">t_final</span> <span class="o">-</span> <span class="n">t_start</span><span class="p">)</span><span class="o">/</span><span class="n">delta_t</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+<span class="c1"># Set initial condition(s): for integrating variable and time!</span>
+<span class="n">CA_t_zero</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">T_t_zero</span> <span class="o">=</span> <span class="mf">295.0</span>
+<span class="n">r</span><span class="o">.</span><span class="n">set_initial_value</span><span class="p">([</span><span class="n">CA_t_zero</span><span class="p">,</span> <span class="n">T_t_zero</span><span class="p">],</span> <span class="n">t_start</span><span class="p">)</span>
+
+<span class="c1"># Additional Python step: create vectors to store trajectories</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_steps</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+<span class="n">CA</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_steps</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+<span class="n">temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_steps</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+<span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_start</span>
+<span class="n">CA</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">CA_t_zero</span>
+<span class="n">temp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">T_t_zero</span>
+
+<span class="c1"># Integrate the ODE(s) across each delta_t timestep</span>
+<span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="k">while</span> <span class="n">r</span><span class="o">.</span><span class="n">successful</span><span class="p">()</span> <span class="ow">and</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="n">num_steps</span><span class="p">:</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">t</span> <span class="o">+</span> <span class="n">delta_t</span><span class="p">)</span>
+
+    <span class="c1"># Store the results to plot later</span>
+    <span class="n">t</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">t</span>
+    <span class="n">CA</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">temp</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="c1"># All done!  Plot the trajectories in two separate plots:</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">figure</span><span class="p">()</span>
+<span class="n">ax1</span> <span class="o">=</span> <span class="n">subplot</span><span class="p">(</span><span class="mi">211</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">CA</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">t_start</span><span class="p">,</span> <span class="n">t_final</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time [minutes]&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Concentration [mol/L]&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="s1">&#39;on&#39;</span><span class="p">)</span>
+
+<span class="n">ax2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">212</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">temp</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">t_start</span><span class="p">,</span> <span class="n">t_final</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time [minutes]&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Temperaturere [K]&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="s1">&#39;on&#39;</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;coupled-ode-plot.png&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="12-integrating-an-initial-value-problem-single-ode.html" title="previous chapter">Integrating an initial value problem (single ODE)</a></li>
+      <li>Next: <a href="15-principal-components-analysis-pca-using-a-sequential-method.html" title="next chapter">Principal components analysis (PCA) using a sequential method</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Jiayue Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/rst-files/13-integrating-an-initial-value-problem-multiple-odes.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
